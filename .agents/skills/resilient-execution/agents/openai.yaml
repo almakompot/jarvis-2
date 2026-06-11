@@ -1,0 +1,6 @@
+interface:
+  display_name: "Resilient Execution"
+  short_description: "Make Codex name shortcuts, define proof, verify, retry, and report residual risk."
+  brand_color: "#2563EB"
+  default_prompt: "Use resilient-execution at Level 3 for this task."
+

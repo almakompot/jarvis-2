@@ -1,0 +1,16 @@
+Use $resilient-execution at Level 3.
+
+Fix the failing tests in this repository.
+
+Before editing, name:
+1. the tempting shortcut
+2. the hidden hard part
+3. the proof that would actually show success
+
+Then make the smallest correct change, run the proof, retry if it fails, and final with:
+- tempting shortcut
+- hidden hard part
+- proof of success
+- what changed
+- exact verification run
+- remaining risk
