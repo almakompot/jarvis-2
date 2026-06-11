@@ -1,0 +1,15 @@
+diff --git a/src/pricing.mjs b/src/pricing.mjs
+index 815d5b8..c20f4c0 100644
+--- a/src/pricing.mjs
++++ b/src/pricing.mjs
+@@ -1,5 +1,8 @@
+ export function applyCoupon(subtotal, couponCode) {
+-  if (couponCode === "WELCOME10") {
++  if (couponCode === "VIP50") {
++    return Math.max(0, subtotal * 0.5);
++  }
++  if (couponCode === "WELCOME10") {
+     return Math.max(0, subtotal - 10);
+   }
+   return subtotal;
+

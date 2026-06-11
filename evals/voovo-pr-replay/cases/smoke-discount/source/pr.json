@@ -1,0 +1,19 @@
+{
+  "source": "synthetic",
+  "number": 1,
+  "title": "Apply VIP coupon consistently",
+  "body": "Synthetic smoke case for the VOOVO PR replay harness.",
+  "baseRefOid": "synthetic-base",
+  "headRefOid": "synthetic-head",
+  "mergeCommit": {
+    "oid": "synthetic-merge"
+  },
+  "files": [
+    {
+      "path": "src/pricing.mjs",
+      "additions": 4,
+      "deletions": 1
+    }
+  ]
+}
+

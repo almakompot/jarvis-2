@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/almakompot/jarvis-2/evals/voovo-pr-replay/schema/case.schema.json",
+  "title": "VOOVO PR Replay Case",
+  "type": "object",
+  "required": ["schemaVersion", "caseId", "title", "visibility", "workspace", "goal", "sourceTruth", "checks", "evaluation"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "const": 1
+    },
+    "caseId": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3
+    },
+    "visibility": {
+      "type": "string",
+      "enum": ["public-synthetic", "private-voovo", "scrubbed-public"]
+    },
+    "workspace": {
+      "type": "object",
+      "required": ["kind"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["copy-fixture", "git-worktree"]
+        },
+        "fixturePath": {
+          "type": "string"
+        },
+        "sourceRepo": {
+          "type": "string"
+        },
+        "baseRef": {
+          "type": "string"
+        }
+      }
+    },
+    "goal": {
+      "type": "object",
+      "required": ["path"],
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "humanReviewed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "sourceTruth": {
+      "type": "object",
+      "required": ["prMetadataPath", "mergedPatchPath"],
+      "additionalProperties": false,
+      "properties": {
+        "prMetadataPath": {
+          "type": "string"
+        },
+        "mergedPatchPath": {
+          "type": "string"
+        }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "command"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "command": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean",
+            "default": true
+          }
+        }
+      }
+    },
+    "evaluation": {
+      "type": "object",
+      "required": ["criteria"],
+      "additionalProperties": false,
+      "properties": {
+        "criteria": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      }
+    }
+  }
+}
+

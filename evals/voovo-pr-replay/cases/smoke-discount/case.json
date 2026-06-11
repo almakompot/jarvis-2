@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "caseId": "smoke-discount",
+  "title": "Apply VIP coupon consistently",
+  "visibility": "public-synthetic",
+  "workspace": {
+    "kind": "copy-fixture",
+    "fixturePath": "../../fixtures/smoke-repo"
+  },
+  "goal": {
+    "path": "goal.md",
+    "humanReviewed": true
+  },
+  "sourceTruth": {
+    "prMetadataPath": "source/pr.json",
+    "mergedPatchPath": "source/merged.patch"
+  },
+  "checks": [
+    {
+      "name": "test",
+      "command": "npm test",
+      "required": true
+    }
+  ],
+  "evaluation": {
+    "criteria": [
+      "correctness",
+      "regression risk",
+      "maintainability",
+      "minimality",
+      "test quality",
+      "product behavior",
+      "repo-pattern fit",
+      "review burden"
+    ]
+  }
+}
+

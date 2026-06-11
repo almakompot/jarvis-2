@@ -8,6 +8,7 @@ The repo contains:
 - `.agents/skills/resilient-execution/SKILL.md`: reusable Codex skill.
 - `prompts/resilience-levels.md`: copyable task contracts.
 - `evals/shortcut-trap`: a tiny bug fixture designed to punish shallow fixes.
+- `evals/voovo-pr-replay`: phase-two counterfactual PR replay benchmark scaffold.
 - `scripts/run-codex-eval.mjs`: runs baseline and resilient Codex CLI attempts.
 - `scripts/score-transcript.mjs`: scores the final Codex messages for resilience markers.
 
@@ -32,6 +33,14 @@ That command copies the fixture into `tmp/eval-runs/`, runs `codex exec` twice, 
 - resilient prompt: explicit shortcut detection, proof, verification, and final risk report
 
 The command exits nonzero unless both copied fixtures are repaired and the resilient run beats baseline on the behavior score.
+
+To validate the VOOVO PR replay case schema and leakage checks:
+
+```bash
+npm run voovo:validate-cases
+```
+
+See `evals/voovo-pr-replay/README.md` for private VOOVO PR imports and counterfactual replay runs.
 
 ## How To Use In Codex App
 
