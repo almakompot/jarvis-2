@@ -22,6 +22,7 @@ for (const variant of variants) {
   const variantDir = join(runDir, variant);
   const workdir = join(variantDir, "workdir");
   prepareWorkspace(manifest, caseDir, workdir);
+  writeAgentCase(manifest, workdir);
 
   if (variant === "resilient") {
     installResilientSkill(workdir);
@@ -156,9 +157,22 @@ function installResilientSkill(workdir) {
   cpSync(skillSource, skillTarget, { recursive: true });
 }
 
+function writeAgentCase(manifest, workdir) {
+  writeJson(join(workdir, "replay-case.json"), {
+    caseId: manifest.caseId,
+    title: manifest.title,
+    checks: manifest.checks,
+    evaluationCriteria: manifest.evaluation.criteria
+  });
+}
+
 function buildPrompt(variant, goal) {
+  const checkList = [
+    "Allowed verification commands:",
+    ...manifest.checks.map((check) => `- ${check.name}: \`${check.command}\`${check.required === false ? " (optional)" : ""}`)
+  ].join("\n");
   if (variant === "baseline") {
-    return goal;
+    return [goal, "", checkList, "", "A safe copy of the allowed checks is also available at `replay-case.json`."].join("\n");
   }
   return [
     "Use $resilient-execution at Level 3.",
@@ -167,7 +181,11 @@ function buildPrompt(variant, goal) {
     "",
     "Before editing, name the tempting shortcut, hidden hard part, and proof of success. Final answer must repeat those plus exact verification and remaining risk.",
     "",
-    goal
+    goal,
+    "",
+    checkList,
+    "",
+    "A safe copy of the allowed checks is also available at `replay-case.json`."
   ].join("\n");
 }
 

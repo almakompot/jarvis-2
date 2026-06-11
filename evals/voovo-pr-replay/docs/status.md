@@ -36,7 +36,7 @@ npm run voovo:run-case -- --case evals/voovo-pr-replay/cases/smoke-discount
 npm run voovo:compare -- --case evals/voovo-pr-replay/cases/smoke-discount --run-dir tmp/voovo-pr-replay/smoke-discount/2026-06-11T10-25-56-943Z
 ```
 
-Result:
+Synthetic smoke result:
 
 - baseline Codex run exited `0`
 - resilient Codex run exited `0`
@@ -45,6 +45,28 @@ Result:
 - comparison scaffold generated under the run directory
 - current runner summary recorded both Codex statuses and check status, and exits nonzero if any Codex run fails
 
+Private VOOVO first replay:
+
+```bash
+npm run voovo:run-case -- --case evals/voovo-pr-replay/private-cases/<case-id>
+```
+
+Run directory shape:
+
+```text
+tmp/voovo-pr-replay/<case-id>/<timestamp>
+```
+
+Result:
+
+- baseline Codex run exited `0`
+- resilient Codex run exited `0`
+- both changed one intended UI page file
+- `npm test` and `npm run build` both failed with missing local dependencies (`vitest` and `next` not installed)
+- because those checks were optional for the imported case, this run proves agent execution and patch capture, not verified product correctness
+- harness was updated afterward so prompts include allowed checks and check summaries report optional failures separately instead of saying all checks passed
+- a local evaluator verdict judged resilient as a narrow process/reporting winner, while the actual implementation patches were a code tie
+
 The smoke case proves the harness can copy a base workspace, run both agent variants, collect patches, run checks, and generate evaluator evidence. It does not prove superiority on real VOOVO work.
 
 ## Real VOOVO Case Started
@@ -52,22 +74,15 @@ The smoke case proves the harness can copy a base workspace, run both agent vari
 Generated locally and intentionally ignored by git:
 
 ```text
-evals/voovo-pr-replay/private-cases/voovo-checkout-pr20-fix-course-checkout-sidebar-flow
+evals/voovo-pr-replay/private-cases/<case-id>
 ```
-
-Source:
-
-- repo: `VoovoStudy/voovo-checkout`
-- PR: `#20`, "Fix course checkout sidebar flow"
-- base commit: `06519b4b4f7ff34a2a47292b2f12fb70203a172b`
-- merge commit: `6f5adb608a5ff8b52d340f9463bea8b59e74676d`
 
 Status:
 
 - private PR metadata and patch imported locally
 - generated goal prompt validates against path/URL leakage checks
-- `goal.humanReviewed` remains `false`
-- runner refuses to launch agents for that case until the goal is reviewed or explicitly overridden
+- first private goal was manually reviewed locally before agent execution
+- runner refuses to launch agents for future unreviewed cases unless explicitly overridden
 
 ## What This Can Prove Now
 
@@ -86,6 +101,6 @@ Status:
 
 ## Next Best Cases
 
-- `VoovoStudy/voovo-checkout` PR #20 after manual goal rewrite/review.
-- `VoovoStudy/voovo-checkout` PR #14 for a compact UI behavior fix.
-- `VoovoStudy/voovo-content-platform` PR #558 only after careful review, because grade sync/webhook work has higher data-shape and backend risk.
+- One small checkout UI/layout PR with browser-verifiable behavior.
+- One compact UI behavior fix that can run without external services.
+- One backend sync/webhook PR only after careful review, because data-shape and backend risk are higher.

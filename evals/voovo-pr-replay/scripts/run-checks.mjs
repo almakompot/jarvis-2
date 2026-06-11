@@ -30,21 +30,31 @@ for (const variant of variants) {
   }
 
   const failedRequired = checks.filter((check) => check.required && check.status !== 0);
+  const failedOptional = checks.filter((check) => !check.required && check.status !== 0);
+  const unavailable = checks.filter((check) => check.status === 127).map((check) => check.name);
   const summary = {
     variant,
     workdir,
     checks,
-    passed: failedRequired.length === 0,
-    failedRequired: failedRequired.map((check) => check.name)
+    requiredPassed: failedRequired.length === 0,
+    allPassed: checks.every((check) => check.status === 0),
+    failedRequired: failedRequired.map((check) => check.name),
+    failedOptional: failedOptional.map((check) => check.name),
+    unavailable
   };
   summaries[variant] = summary;
   writeJson(join(runDir, variant, "checks-summary.json"), summary);
-  console.log(`${variant}: checks ${summary.passed ? "passed" : "failed"}`);
+  if (summary.allPassed) {
+    console.log(`${variant}: all checks passed`);
+  } else if (summary.requiredPassed) {
+    console.log(`${variant}: required checks passed; optional failed: ${summary.failedOptional.join(", ") || "none"}`);
+  } else {
+    console.log(`${variant}: required checks failed: ${summary.failedRequired.join(", ")}`);
+  }
 }
 
 writeJson(join(runDir, "checks-summary.json"), summaries);
 
-if (Object.values(summaries).some((summary) => !summary.passed)) {
+if (Object.values(summaries).some((summary) => !summary.requiredPassed)) {
   process.exit(1);
 }
-

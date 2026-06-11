@@ -72,9 +72,9 @@ Prepare a private VOOVO case from GitHub:
 
 ```bash
 npm run voovo:prepare-pr -- \
-  --github-repo VoovoStudy/voovo-checkout \
-  --pr 20 \
-  --source-repo /Users/levente/Documents/Jarvis/Projects/Work/VOOVO/DEV/voovo-checkout
+  --github-repo OWNER/REPO \
+  --pr 123 \
+  --source-repo /absolute/path/to/local/repo
 ```
 
 Run baseline and resilient agents:
@@ -120,12 +120,8 @@ The evaluator should compare the merged PR and new agent implementation on:
 
 The merged PR is not automatically better. The agent can win if it solves the same goal with less risk or clearer structure.
 
-## First Real Candidate
+## Real Candidate Handling
 
-Local candidate identified on 2026-06-11:
+A local VOOVO candidate was identified and imported on 2026-06-11, but exact PR metadata, commit SHAs, diffs, run directories, and generated goals are intentionally kept under ignored private-case/output paths.
 
-- `VoovoStudy/voovo-checkout` PR #20, "Fix course checkout sidebar flow"
-- base commit: `06519b4b4f7ff34a2a47292b2f12fb70203a172b`
-- merge commit: `6f5adb608a5ff8b52d340f9463bea8b59e74676d`
-
-Do not commit the imported PR metadata or patch unless explicitly approved.
+Do not commit imported PR metadata or patches unless explicitly approved.
