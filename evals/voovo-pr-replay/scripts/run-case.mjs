@@ -4,12 +4,15 @@ import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join, resolve } from "node:path";
 import { caseRelative, ensureCleanDir, ensureExists, loadCase, parseArgs, repoRoot, requiredArg, runCommand, writeCommandLog, writeJson } from "./lib.mjs";
 import { spawnSync } from "node:child_process";
+import { assertNoBlockingLeakage, assertSnapshotNotDrifted, shellQuote, verifyWorktree } from "./replay-helpers.mjs";
 
 const args = parseArgs(process.argv.slice(2));
 const { caseDir, manifest } = loadCase(requiredArg(args, "case"));
+assertNoBlockingLeakage(caseDir, manifest, args["allow-leakage"] === true);
 if (manifest.goal?.humanReviewed !== true && args["allow-unreviewed-goal"] !== true) {
   throw new Error("Refusing to run agents: goal.humanReviewed is false. Review goal.md for leakage or pass --allow-unreviewed-goal.");
 }
+assertSnapshotNotDrifted(manifest);
 const variants = args.variant ? [args.variant] : ["baseline", "resilient"];
 const model = args.model || "gpt-5.5";
 const timestamp = new Date().toISOString().replaceAll(":", "-").replaceAll(".", "-");
@@ -139,11 +142,16 @@ function prepareWorkspace(manifest, caseDir, workdir) {
     rmSync(workdir, { recursive: true, force: true });
     mkdirSync(dirname(workdir), { recursive: true });
     ensureExists(manifest.workspace.sourceRepo, "workspace.sourceRepo");
-    const add = runCommand(`git worktree add --detach ${shellQuote(workdir)} ${shellQuote(manifest.workspace.baseRef)}`, manifest.workspace.sourceRepo);
+    const base = manifest.workspace.preSha || manifest.workspace.baseRef;
+    if (!base) {
+      throw new Error(`git-worktree case ${manifest.caseId} requires workspace.preSha or legacy workspace.baseRef`);
+    }
+    const add = runCommand(`git worktree add --detach ${shellQuote(workdir)} ${shellQuote(base)}`, manifest.workspace.sourceRepo);
+    writeCommandLog(join(dirname(workdir), "worktree-add.log"), add);
     if (add.status !== 0) {
-      writeCommandLog(join(dirname(workdir), "worktree-add.log"), add);
       throw new Error(`git worktree add failed for ${manifest.caseId}`);
     }
+    verifyWorktree({ manifest, workdir, logDir: dirname(workdir) });
     return;
   }
 
@@ -187,8 +195,4 @@ function buildPrompt(variant, goal) {
     "",
     "A safe copy of the allowed checks is also available at `replay-case.json`."
   ].join("\n");
-}
-
-function shellQuote(value) {
-  return `'${String(value).replaceAll("'", "'\\''")}'`;
 }

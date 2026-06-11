@@ -39,6 +39,24 @@
         },
         "baseRef": {
           "type": "string"
+        },
+        "preSha": {
+          "type": "string"
+        },
+        "headSha": {
+          "type": "string"
+        },
+        "mergeSha": {
+          "type": ["string", "null"]
+        },
+        "preMethod": {
+          "type": "string"
+        },
+        "prHeadRef": {
+          "type": "string"
+        },
+        "snapshotSensitive": {
+          "type": "boolean"
         }
       }
     },
@@ -52,6 +70,9 @@
         },
         "humanReviewed": {
           "type": "boolean"
+        },
+        "leakageReportPath": {
+          "type": "string"
         }
       }
     },
@@ -65,6 +86,43 @@
         },
         "mergedPatchPath": {
           "type": "string"
+        },
+        "selectedPatchPath": {
+          "type": "string"
+        },
+        "selectedStatPath": {
+          "type": "string"
+        },
+        "selectedNumstatPath": {
+          "type": "string"
+        },
+        "selectedFilesPath": {
+          "type": "string"
+        },
+        "selectedStatsPath": {
+          "type": "string"
+        },
+        "githubStats": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "selectedStats": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "additions": {
+              "type": "integer"
+            },
+            "deletions": {
+              "type": "integer"
+            },
+            "changedFiles": {
+              "type": "integer"
+            }
+          }
+        },
+        "statsMismatch": {
+          "type": "boolean"
         }
       }
     },
@@ -89,6 +147,27 @@
         }
       }
     },
+    "manualProofs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "description"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "description": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      }
+    },
     "evaluation": {
       "type": "object",
       "required": ["criteria"],
@@ -105,4 +184,3 @@
     }
   }
 }
-

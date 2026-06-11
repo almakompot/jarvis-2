@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { caseRelative, loadCase, readJson, replayRoot } from "./lib.mjs";
 
@@ -51,12 +51,25 @@ for (const caseDir of cases) {
   const goalPath = caseRelative(caseDir, manifest.goal?.path || "");
   const prPath = caseRelative(caseDir, manifest.sourceTruth?.prMetadataPath || "");
   const patchPath = caseRelative(caseDir, manifest.sourceTruth?.mergedPatchPath || "");
+  const selectedPaths = [
+    ["selected patch", manifest.sourceTruth?.selectedPatchPath],
+    ["selected stat", manifest.sourceTruth?.selectedStatPath],
+    ["selected numstat", manifest.sourceTruth?.selectedNumstatPath],
+    ["selected files", manifest.sourceTruth?.selectedFilesPath],
+    ["selected stats", manifest.sourceTruth?.selectedStatsPath]
+  ].filter(([, path]) => path);
 
   for (const [path, label] of [
     [goalPath, "goal"],
     [prPath, "source PR metadata"],
     [patchPath, "source merged patch"]
   ]) {
+    if (!existsSync(path)) {
+      fail(caseDir, `missing ${label}: ${path}`);
+    }
+  }
+  for (const [label, relativePath] of selectedPaths) {
+    const path = caseRelative(caseDir, relativePath);
     if (!existsSync(path)) {
       fail(caseDir, `missing ${label}: ${path}`);
     }
@@ -68,8 +81,11 @@ for (const caseDir of cases) {
       fail(caseDir, `missing fixturePath: ${fixturePath}`);
     }
   } else if (manifest.workspace?.kind === "git-worktree") {
-    if (!manifest.workspace.sourceRepo || !manifest.workspace.baseRef) {
-      fail(caseDir, "git-worktree cases require workspace.sourceRepo and workspace.baseRef");
+    if (!manifest.workspace.sourceRepo || !(manifest.workspace.preSha || manifest.workspace.baseRef)) {
+      fail(caseDir, "git-worktree cases require workspace.sourceRepo and workspace.preSha or legacy workspace.baseRef");
+    }
+    if (manifest.workspace.snapshotSensitive && (!manifest.workspace.headSha || !manifest.workspace.prHeadRef)) {
+      fail(caseDir, "snapshot-sensitive git-worktree cases require workspace.headSha and workspace.prHeadRef");
     }
   } else {
     fail(caseDir, "workspace.kind must be copy-fixture or git-worktree");
@@ -77,7 +93,7 @@ for (const caseDir of cases) {
 
   if (existsSync(prPath) && existsSync(goalPath)) {
     const pr = readJson(prPath);
-    const goal = String(await import("node:fs").then((fs) => fs.readFileSync(goalPath, "utf8")));
+    const goal = readFileSync(goalPath, "utf8");
     if (/github\.com\/[^/\s]+\/[^/\s]+\/pull\/\d+/i.test(goal)) {
       fail(caseDir, "goal leaks source PR URL");
     }
@@ -85,6 +101,27 @@ for (const caseDir of cases) {
       if (file.path && goal.includes(file.path)) {
         fail(caseDir, `goal leaks changed file path: ${file.path}`);
       }
+    }
+  }
+
+  if (manifest.goal?.leakageReportPath) {
+    const reportPath = caseRelative(caseDir, manifest.goal.leakageReportPath);
+    if (!existsSync(reportPath)) {
+      fail(caseDir, `missing leakage report: ${reportPath}`);
+    } else {
+      const report = readJson(reportPath);
+      if ((report.blockingFindings || []).length > 0) {
+        fail(caseDir, `leakage report has ${report.blockingFindings.length} blocking finding(s)`);
+      }
+    }
+  }
+
+  for (const [index, check] of (manifest.checks || []).entries()) {
+    if (!/^[a-z0-9][a-z0-9-]*$/.test(check.name || "")) {
+      fail(caseDir, `check ${index} has invalid name`);
+    }
+    if (!check.command) {
+      fail(caseDir, `check ${index} is missing command`);
     }
   }
 }

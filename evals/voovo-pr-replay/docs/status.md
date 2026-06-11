@@ -13,6 +13,13 @@ Date: 2026-06-11.
 - Baseline/resilient runner: `evals/voovo-pr-replay/scripts/run-case.mjs`
 - Check runner: `evals/voovo-pr-replay/scripts/run-checks.mjs`
 - Comparison scaffold generator: `evals/voovo-pr-replay/scripts/compare-case.mjs`
+- Explicit replay snapshot metadata for private git-worktree imports:
+  `preSha`, `headSha`, optional `mergeSha`, `preMethod`, and `prHeadRef`
+- Open PR import support via `--allow-open`
+- Selected-base source truth generated from `git diff <preSha>..<headSha>`
+- Goal leakage reports and runner-side blocking for obvious source-truth leaks
+- Focused check planning for Flutter/Dart and Firebase Functions paths
+- Worktree HEAD/clean-status verification before agent execution
 
 ## Verified
 
@@ -28,6 +35,7 @@ This currently checks:
 - transcript scorer rejects fake verification claims
 - sample resilient output scores as passing
 - PR replay cases validate
+- PR replay repair tests pass
 
 Smoke PR replay:
 
@@ -83,6 +91,7 @@ Status:
 - generated goal prompt validates against path/URL leakage checks
 - first private goal was manually reviewed locally before agent execution
 - runner refuses to launch agents for future unreviewed cases unless explicitly overridden
+- new private imports should use selected-base source truth and explicit replay snapshot metadata instead of loose base refs
 
 ## What This Can Prove Now
 
@@ -91,6 +100,9 @@ Status:
 - Whether baseline and resilient agents can produce patches from the same outcome-only brief.
 - Whether checks pass for both produced implementations.
 - Whether an evaluator has enough evidence to compare merged, baseline, and resilient outputs.
+- Whether a private git-worktree run starts from the recorded pre-PR SHA.
+- Whether selected-base LOC differs from GitHub-visible PR LOC.
+- Whether imported checks are at least matched to broad code domains such as Flutter or Firebase Functions.
 
 ## What This Cannot Prove Yet
 
@@ -98,9 +110,11 @@ Status:
 - Whether the evaluator judgment is reliable.
 - Whether agents avoid non-obvious leakage from generated goals.
 - Whether UI behavior is actually correct without browser or visual checks.
+- Whether manual/device/cloud-adjacent behavior is correct when no deterministic fixture or manual-proof artifact is attached.
 
-## Next Best Cases
+## Next Phase
 
-- One small checkout UI/layout PR with browser-verifiable behavior.
-- One compact UI behavior fix that can run without external services.
-- One backend sync/webhook PR only after careful review, because data-shape and backend risk are higher.
+- Turn `compare-case.mjs` into structured evaluator output instead of a scaffold.
+- Add manual-proof artifact slots for device, browser, account-state, and cloud-adjacent checks.
+- Add deterministic fixtures for stateful VOOVO cases before running stress cases.
+- Keep the first live repair-validation run to focused smoke cases before broad native/migration/cloud-adjacent cases.

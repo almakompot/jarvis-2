@@ -16,6 +16,9 @@ const evidence = {
   goalPath: caseRelative(caseDir, manifest.goal.path),
   sourcePrPath: caseRelative(caseDir, manifest.sourceTruth.prMetadataPath),
   mergedPatchPath: caseRelative(caseDir, manifest.sourceTruth.mergedPatchPath),
+  selectedPatchPath: caseRelative(caseDir, manifest.sourceTruth.selectedPatchPath || manifest.sourceTruth.mergedPatchPath),
+  selectedStatsPath: manifest.sourceTruth.selectedStatsPath ? caseRelative(caseDir, manifest.sourceTruth.selectedStatsPath) : null,
+  statsMismatch: Boolean(manifest.sourceTruth.statsMismatch),
   variants: {}
 };
 
@@ -43,7 +46,10 @@ const report = [
   "## Evidence Files",
   "",
   `- Source PR metadata: ${relative(process.cwd(), evidence.sourcePrPath)}`,
-  `- Merged PR patch: ${relative(process.cwd(), evidence.mergedPatchPath)}`,
+  `- Selected replay patch: ${relative(process.cwd(), evidence.selectedPatchPath)}`,
+  `- Merged/legacy patch path: ${relative(process.cwd(), evidence.mergedPatchPath)}`,
+  `- Selected replay stats: ${evidence.selectedStatsPath ? relative(process.cwd(), evidence.selectedStatsPath) : "n/a"}`,
+  `- GitHub/replay stat mismatch: ${evidence.statsMismatch ? "yes" : "no"}`,
   `- Baseline patch: ${relative(process.cwd(), evidence.variants.baseline.implementationPatchPath)}`,
   `- Resilient patch: ${relative(process.cwd(), evidence.variants.resilient.implementationPatchPath)}`,
   `- Baseline checks: ${relative(process.cwd(), evidence.variants.baseline.checksSummaryPath)}`,
@@ -87,4 +93,3 @@ function readMaybe(path) {
 function fence(value) {
   return ["```text", value.trim(), "```"].join("\n");
 }
-

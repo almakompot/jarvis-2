@@ -77,6 +77,22 @@ npm run voovo:prepare-pr -- \
   --source-repo /absolute/path/to/local/repo
 ```
 
+Open PRs are snapshot-sensitive and require an explicit opt-in:
+
+```bash
+npm run voovo:prepare-pr -- \
+  --github-repo OWNER/REPO \
+  --pr 123 \
+  --source-repo /absolute/path/to/local/repo \
+  --allow-open
+```
+
+Private imports now record explicit replay snapshot metadata (`preSha`, `headSha`,
+optional `mergeSha`, `preMethod`, and the fetched PR-head ref). The evaluator
+source truth is generated from the selected base with `git diff <preSha>..<headSha>`;
+GitHub PR LOC/file stats are kept as context only because stacked branches and
+lockfile churn can distort the visible PR diff.
+
 Run baseline and resilient agents:
 
 ```bash
@@ -88,6 +104,10 @@ For auto-generated private VOOVO goals, review `goal.md` first and set `goal.hum
 ```bash
 npm run voovo:run-case -- --case evals/voovo-pr-replay/private-cases/<case-id> --allow-unreviewed-goal
 ```
+
+Generated private goals also include a leakage report. The runner refuses to
+launch agents when that report has blocking findings unless `--allow-leakage` is
+passed for debugging.
 
 Run checks for an existing run:
 
@@ -119,6 +139,14 @@ The evaluator should compare the merged PR and new agent implementation on:
 - review burden
 
 The merged PR is not automatically better. The agent can win if it solves the same goal with less risk or clearer structure.
+
+## Current Repair Boundary
+
+The harness now supports explicit selected-base snapshots, open-PR snapshots,
+selected replay patches/stats, goal leakage reports, focused check planning, and
+pre-run worktree verification. The comparison command still produces an
+evaluator scaffold rather than an autonomous final verdict; structured evaluator
+output and manual-proof artifact handling are the next phase.
 
 ## Real Candidate Handling
 

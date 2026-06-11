@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Codex resilience protocol, skill, and evaluation harness.",
   "scripts": {
-    "check": "npm run test:fixture:expected-fail && npm run test:scorer && npm run eval:score -- --input docs/sample-resilient-output.md && npm run voovo:validate-cases",
+    "check": "npm run test:fixture:expected-fail && npm run test:scorer && npm run eval:score -- --input docs/sample-resilient-output.md && npm run voovo:test-repairs && npm run voovo:validate-cases",
     "test:fixture": "node --test evals/shortcut-trap/test/*.test.mjs",
     "test:fixture:expected-fail": "node scripts/assert-fixture-fails.mjs",
     "test:scorer": "node scripts/test-scorer.mjs",
@@ -13,6 +13,7 @@
     "eval:codex": "node scripts/run-codex-eval.mjs",
     "voovo:validate-cases": "node evals/voovo-pr-replay/scripts/validate-cases.mjs",
     "voovo:prepare-pr": "node evals/voovo-pr-replay/scripts/prepare-case-from-pr.mjs",
+    "voovo:test-repairs": "node --test evals/voovo-pr-replay/scripts/*.test.mjs",
     "voovo:run-case": "node evals/voovo-pr-replay/scripts/run-case.mjs",
     "voovo:run-checks": "node evals/voovo-pr-replay/scripts/run-checks.mjs",
     "voovo:compare": "node evals/voovo-pr-replay/scripts/compare-case.mjs"
