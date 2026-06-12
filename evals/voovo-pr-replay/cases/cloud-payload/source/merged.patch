@@ -1,0 +1,33 @@
+diff --git a/src/outbound.mjs b/src/outbound.mjs
+index 9a80f11..72ddc3f 100644
+--- a/src/outbound.mjs
++++ b/src/outbound.mjs
+@@ -1,19 +1,26 @@
+ export function buildReminderPayload(input) {
+   return {
+-    send: true,
+-    token: process.env.SLACK_WEBHOOK_URL,
++    dryRun: input.allowSend !== true,
++    send: input.allowSend === true,
++    idempotencyKey: `${input.courseId}:${input.userId}:${input.channel}`,
+     channel: input.channel,
+     text: input.text,
+     metadata: {
+       userId: input.userId,
+-      courseId: input.courseId
++      courseId: input.courseId,
++      transport: "mock"
+     }
+   };
+ }
+ 
+ export function queueReminder(input, transport) {
+   const payload = buildReminderPayload(input);
+-  if (transport) {
++
++  if (payload.send && transport) {
+     transport.send(payload);
+   }
++
+   return payload;
+ }

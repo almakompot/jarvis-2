@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "caseId": "smoke-discount",
-  "title": "Apply VIP coupon consistently",
+  "caseId": "stateful-cards",
+  "title": "Keep actionable study cards visible",
   "visibility": "public-synthetic",
-  "tier": "smoke",
+  "tier": "medium",
   "automationConfidence": "high",
   "requiresManualProof": false,
   "requiresExternalFixture": false,
   "estimatedRuntime": "short",
   "workspace": {
     "kind": "copy-fixture",
-    "fixturePath": "../../fixtures/smoke-repo"
+    "fixturePath": "../../fixtures/stateful-cards-repo"
   },
   "goal": {
     "path": "goal.md",

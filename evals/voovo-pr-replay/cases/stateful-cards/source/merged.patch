@@ -1,0 +1,21 @@
+diff --git a/src/cards.mjs b/src/cards.mjs
+index 06778fa..8613ce8 100644
+--- a/src/cards.mjs
++++ b/src/cards.mjs
+@@ -1,6 +1,15 @@
+ export function getVisibleStudyCards(cards) {
+-  return cards.filter((card) => card.ready).map(normalizeCard);
++  return cards.filter(isActionableCard).map(normalizeCard);
+ }
+ 
++function isActionableCard(card) {
++  if (card.hidden || card.status === "ended") {
++    return false;
++  }
++
++  return card.ready || card.status === "started" || card.status === "active";
++}
++
+ function normalizeCard(card) {
+   return {
+     id: card.id,

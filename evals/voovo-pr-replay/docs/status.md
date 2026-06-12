@@ -1,6 +1,6 @@
 # VOOVO PR Replay Status
 
-Date: 2026-06-11.
+Date: 2026-06-12.
 
 ## Built
 
@@ -12,7 +12,10 @@ Date: 2026-06-11.
 - Case validator and leakage checks: `evals/voovo-pr-replay/scripts/validate-cases.mjs`
 - Baseline/resilient runner: `evals/voovo-pr-replay/scripts/run-case.mjs`
 - Check runner: `evals/voovo-pr-replay/scripts/run-checks.mjs`
-- Comparison scaffold generator: `evals/voovo-pr-replay/scripts/compare-case.mjs`
+- Structured comparison generator: `evals/voovo-pr-replay/scripts/compare-case.mjs`
+- Comparison result validator: `evals/voovo-pr-replay/scripts/validate-comparison-result.mjs`
+- Tiered suite runner: `evals/voovo-pr-replay/scripts/run-suite.mjs`
+- Harness worktree cleanup tool: `evals/voovo-pr-replay/scripts/cleanup-worktrees.mjs`
 - Explicit replay snapshot metadata for private git-worktree imports:
   `preSha`, `headSha`, optional `mergeSha`, `preMethod`, and `prHeadRef`
 - Open PR import support via `--allow-open`
@@ -20,6 +23,13 @@ Date: 2026-06-11.
 - Goal leakage reports and runner-side blocking for obvious source-truth leaks
 - Focused check planning for Flutter/Dart and Firebase Functions paths
 - Worktree HEAD/clean-status verification before agent execution
+- Manual-proof artifact validation for screenshot, video, log, markdown-note,
+  device-matrix, mock-transcript, and external-note proof types
+- Unsafe check blocking for deploys, pushes, PR creation, live Slack posting, and
+  direct `.env*` reads
+- Public synthetic stateful and cloud-adjacent fixture cases
+- Private case operator guide:
+  `evals/voovo-pr-replay/docs/private-case-operator-guide.md`
 
 ## Verified
 
@@ -36,6 +46,7 @@ This currently checks:
 - sample resilient output scores as passing
 - PR replay cases validate
 - PR replay repair tests pass
+- suite dry-run and cleanup dry-run behavior are covered by repair tests
 
 Smoke PR replay:
 
@@ -50,7 +61,7 @@ Synthetic smoke result:
 - resilient Codex run exited `0`
 - baseline checks passed
 - resilient checks passed
-- comparison scaffold generated under the run directory
+- structured comparison files generated under the run directory
 - current runner summary recorded both Codex statuses and check status, and exits nonzero if any Codex run fails
 
 Private VOOVO first replay:
@@ -103,18 +114,25 @@ Status:
 - Whether a private git-worktree run starts from the recorded pre-PR SHA.
 - Whether selected-base LOC differs from GitHub-visible PR LOC.
 - Whether imported checks are at least matched to broad code domains such as Flutter or Firebase Functions.
+- Whether required manual proof is present, missing, or rejected.
+- Whether obvious unsafe commands are blocked before execution.
+- Whether public/scrubbed cases are organized by smoke, medium, and stress tiers.
 
 ## What This Cannot Prove Yet
 
 - Whether resilient prompting improves real VOOVO engineering outcomes.
-- Whether the evaluator judgment is reliable.
+- Whether evaluator judgment is reliable before a human/evaluator fills
+  `comparison-result.json` with citations.
 - Whether agents avoid non-obvious leakage from generated goals.
 - Whether UI behavior is actually correct without browser or visual checks.
 - Whether manual/device/cloud-adjacent behavior is correct when no deterministic fixture or manual-proof artifact is attached.
 
 ## Next Phase
 
-- Turn `compare-case.mjs` into structured evaluator output instead of a scaffold.
-- Add manual-proof artifact slots for device, browser, account-state, and cloud-adjacent checks.
-- Add deterministic fixtures for stateful VOOVO cases before running stress cases.
-- Keep the first live repair-validation run to focused smoke cases before broad native/migration/cloud-adjacent cases.
+- Run the smoke suite with `--execute` only when ready to spend agent cycles.
+- Promote more private cases into medium/stress tiers after their goals and proof
+  requirements are reviewed.
+- Fill `comparison-result.json` with evidence-cited evaluator verdicts and track
+  whether resilient output actually wins across repeated private/scrubbed cases.
+- Add more deterministic fixtures for persisted chat, streaming UI, and migration
+  semantics before broad native/migration/cloud-adjacent stress runs.

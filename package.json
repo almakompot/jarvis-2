@@ -16,7 +16,10 @@
     "voovo:test-repairs": "node --test evals/voovo-pr-replay/scripts/*.test.mjs",
     "voovo:run-case": "node evals/voovo-pr-replay/scripts/run-case.mjs",
     "voovo:run-checks": "node evals/voovo-pr-replay/scripts/run-checks.mjs",
-    "voovo:compare": "node evals/voovo-pr-replay/scripts/compare-case.mjs"
+    "voovo:compare": "node evals/voovo-pr-replay/scripts/compare-case.mjs",
+    "voovo:validate-comparison": "node evals/voovo-pr-replay/scripts/validate-comparison-result.mjs",
+    "voovo:run-suite": "node evals/voovo-pr-replay/scripts/run-suite.mjs",
+    "voovo:cleanup-worktrees": "node evals/voovo-pr-replay/scripts/cleanup-worktrees.mjs"
   },
   "engines": {
     "node": ">=20"

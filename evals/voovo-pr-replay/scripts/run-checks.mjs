@@ -3,11 +3,13 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { loadCase, parseArgs, requiredArg, runCommand, writeCommandLog, writeJson } from "./lib.mjs";
+import { assertSafeReplayCommand } from "./replay-helpers.mjs";
 
 const args = parseArgs(process.argv.slice(2));
 const { manifest } = loadCase(requiredArg(args, "case"));
 const runDir = requiredArg(args, "run-dir");
 const variants = args.variant ? [args.variant] : ["baseline", "resilient"];
+const allowUnsafeChecks = args["allow-unsafe-checks"] === true;
 const summaries = {};
 
 for (const variant of variants) {
@@ -17,13 +19,29 @@ for (const variant of variants) {
   const checks = [];
 
   for (const check of manifest.checks || []) {
-    const result = runCommand(check.command, workdir);
+    let safety;
+    let result;
+    try {
+      safety = assertSafeReplayCommand(check.command, allowUnsafeChecks);
+      result = runCommand(check.command, workdir);
+    } catch (error) {
+      safety = { safe: false, reason: error.message, command: check.command };
+      result = {
+        command: check.command,
+        cwd: workdir,
+        status: 126,
+        signal: null,
+        stdout: "",
+        stderr: `${error.message}\n`
+      };
+    }
     const logPath = join(checkDir, `${check.name}.log`);
     writeCommandLog(logPath, result);
     checks.push({
       name: check.name,
       command: check.command,
       required: check.required !== false,
+      safety,
       status: result.status,
       logPath
     });

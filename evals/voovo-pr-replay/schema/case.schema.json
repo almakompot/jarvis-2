@@ -22,6 +22,23 @@
       "type": "string",
       "enum": ["public-synthetic", "private-voovo", "scrubbed-public"]
     },
+    "tier": {
+      "type": "string",
+      "enum": ["smoke", "medium", "stress"]
+    },
+    "automationConfidence": {
+      "type": "string",
+      "enum": ["low", "medium", "high"]
+    },
+    "requiresManualProof": {
+      "type": "boolean"
+    },
+    "requiresExternalFixture": {
+      "type": "boolean"
+    },
+    "estimatedRuntime": {
+      "type": "string"
+    },
     "workspace": {
       "type": "object",
       "required": ["kind"],
@@ -164,6 +181,28 @@
           "required": {
             "type": "boolean",
             "default": false
+          },
+          "artifactPath": {
+            "type": "string"
+          },
+          "artifactType": {
+            "type": "string",
+            "enum": ["screenshot", "video", "log", "markdown-note", "device-matrix", "mock-transcript", "external-note"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["missing", "provided", "accepted", "rejected"],
+            "default": "missing"
+          },
+          "blocksHighConfidence": {
+            "type": "boolean",
+            "default": true
+          },
+          "reviewedBy": {
+            "type": "string"
+          },
+          "reviewedAt": {
+            "type": "string"
           }
         }
       }

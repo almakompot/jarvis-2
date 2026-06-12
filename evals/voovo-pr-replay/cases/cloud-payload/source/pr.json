@@ -1,0 +1,18 @@
+{
+  "source": "synthetic",
+  "number": 3,
+  "title": "Keep outbound reminder payloads dry-run safe",
+  "body": "Synthetic cloud-adjacent case using a mocked transport only.",
+  "baseRefOid": "synthetic-base",
+  "headRefOid": "synthetic-head",
+  "mergeCommit": {
+    "oid": "synthetic-merge"
+  },
+  "files": [
+    {
+      "path": "src/outbound.mjs",
+      "additions": 12,
+      "deletions": 5
+    }
+  ]
+}

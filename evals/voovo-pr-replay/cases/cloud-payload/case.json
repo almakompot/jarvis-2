@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "caseId": "cloud-payload",
+  "title": "Keep outbound reminder payloads dry-run safe",
+  "visibility": "public-synthetic",
+  "tier": "medium",
+  "automationConfidence": "medium",
+  "requiresManualProof": true,
+  "requiresExternalFixture": false,
+  "estimatedRuntime": "short",
+  "workspace": {
+    "kind": "copy-fixture",
+    "fixturePath": "../../fixtures/cloud-payload-repo"
+  },
+  "goal": {
+    "path": "goal.md",
+    "humanReviewed": true
+  },
+  "sourceTruth": {
+    "prMetadataPath": "source/pr.json",
+    "mergedPatchPath": "source/merged.patch"
+  },
+  "checks": [
+    {
+      "name": "test",
+      "command": "npm test",
+      "required": true
+    }
+  ],
+  "manualProofs": [
+    {
+      "name": "mock-transport-proof",
+      "description": "Mock transcript showing that the fixture uses an injected transport and does not contact a live service by default.",
+      "required": true,
+      "artifactPath": "proofs/mock-transport.md",
+      "artifactType": "mock-transcript",
+      "status": "accepted",
+      "blocksHighConfidence": true,
+      "reviewedBy": "synthetic-fixture",
+      "reviewedAt": "2026-06-12"
+    }
+  ],
+  "evaluation": {
+    "criteria": [
+      "correctness",
+      "regression risk",
+      "maintainability",
+      "minimality",
+      "test quality",
+      "product behavior",
+      "repo-pattern fit",
+      "review burden"
+    ]
+  }
+}

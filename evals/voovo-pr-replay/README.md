@@ -30,6 +30,7 @@ case.json              # case manifest
 goal.md                # implementation-agent prompt, safe to show agent
 source/pr.json         # evaluator-only source metadata
 source/merged.patch    # evaluator-only merged implementation patch
+proofs/                # optional manual-proof artifacts for visual/device/cloud-adjacent behavior
 ```
 
 For private VOOVO cases, `source/` stays local and ignored.
@@ -125,6 +126,42 @@ npm run voovo:compare -- \
   --run-dir tmp/voovo-pr-replay/<case-id>/<timestamp>
 ```
 
+The comparison command now writes structured evidence:
+
+```text
+comparison/evidence-manifest.json
+comparison/evaluator-prompt.md
+comparison/comparison-result.json
+comparison/comparison-report.md
+```
+
+`comparison-result.json` is intentionally `winner: inconclusive` until a human
+or evaluator agent reviews the evidence. Validate edited evaluator output with:
+
+```bash
+npm run voovo:validate-comparison -- \
+  --case evals/voovo-pr-replay/cases/smoke-discount \
+  --result tmp/voovo-pr-replay/<case-id>/<timestamp>/comparison/comparison-result.json
+```
+
+Run a tiered suite in dry-run mode:
+
+```bash
+npm run voovo:run-suite -- --tier smoke --case-root evals/voovo-pr-replay/cases
+```
+
+Use `--execute` only when you intend to launch agents. Stress cases require
+`--include-stress`.
+
+Clean disposable harness workdirs after a run:
+
+```bash
+npm run voovo:cleanup-worktrees -- --run-dir tmp/voovo-pr-replay/<case-id>/<timestamp>
+```
+
+Cleanup is dry-run by default. Add `--execute` only after reviewing the candidate
+paths.
+
 ## Evaluation Criteria
 
 The evaluator should compare the merged PR and new agent implementation on:
@@ -140,13 +177,72 @@ The evaluator should compare the merged PR and new agent implementation on:
 
 The merged PR is not automatically better. The agent can win if it solves the same goal with less risk or clearer structure.
 
+## Manual Proofs
+
+Cases can declare `manualProofs` for behavior that deterministic checks cannot
+prove, such as browser layout, device-specific native behavior, account-state
+semantics, or cloud-adjacent mocked integrations.
+
+Manual proof statuses are:
+
+- `missing`
+- `provided`
+- `accepted`
+- `rejected`
+
+Required missing or rejected proof is surfaced in `comparison-result.json` and
+prevents high-confidence claims. Public proof artifacts must be synthetic or
+scrubbed; private screenshots, device notes, and account-state notes stay under
+ignored private paths.
+
+## Safe Command Policy
+
+Replay check commands are blocked before execution when they obviously mutate
+external state or inspect secrets. The default denylist includes deploys, pushes,
+PR creation, live Slack posting, and direct `.env*` reads.
+
+Blocked examples:
+
+```text
+firebase deploy
+gcloud functions deploy
+git push
+gh pr create
+curl https://slack.com/api/chat.postMessage
+rg SECRET .env.local
+```
+
+Allowed examples:
+
+```text
+npm test
+npm run build
+node --test test/*.mjs
+flutter test test/foo_test.dart
+```
+
+`--allow-unsafe-checks` exists only for harness debugging and should not be used
+for private replay runs.
+
 ## Current Repair Boundary
 
 The harness now supports explicit selected-base snapshots, open-PR snapshots,
-selected replay patches/stats, goal leakage reports, focused check planning, and
-pre-run worktree verification. The comparison command still produces an
-evaluator scaffold rather than an autonomous final verdict; structured evaluator
-output and manual-proof artifact handling are the next phase.
+selected replay patches/stats, goal leakage reports, focused check planning,
+pre-run worktree verification, structured comparison output, manual-proof
+artifact validation, unsafe check blocking, tiered suite dry-runs, and safe
+cleanup dry-runs.
+
+It still does not claim resilient prompting beats merged VOOVO PRs. Real claims
+need evaluator-filled comparison results across enough private/scrubbed cases
+with required checks and proof attached.
+
+## Operator Guide
+
+For private case import and operation, use:
+
+```text
+evals/voovo-pr-replay/docs/private-case-operator-guide.md
+```
 
 ## Real Candidate Handling
 

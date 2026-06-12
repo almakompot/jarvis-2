@@ -3,6 +3,7 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { caseRelative, loadCase, readJson, replayRoot } from "./lib.mjs";
+import { classifyReplayCommand, validateManualProofs } from "./replay-helpers.mjs";
 
 const roots = [join(replayRoot, "cases"), join(replayRoot, "private-cases")].filter(existsSync);
 const failures = [];
@@ -46,6 +47,9 @@ for (const caseDir of cases) {
   }
   if (!/^[a-z0-9][a-z0-9-]*$/.test(manifest.caseId || "")) {
     fail(caseDir, "caseId must be kebab-case");
+  }
+  if (manifest.tier && !["smoke", "medium", "stress"].includes(manifest.tier)) {
+    fail(caseDir, "tier must be smoke, medium, or stress");
   }
 
   const goalPath = caseRelative(caseDir, manifest.goal?.path || "");
@@ -122,7 +126,17 @@ for (const caseDir of cases) {
     }
     if (!check.command) {
       fail(caseDir, `check ${index} is missing command`);
+    } else {
+      const safety = classifyReplayCommand(check.command);
+      if (!safety.safe) {
+        fail(caseDir, `check ${check.name || index} uses unsafe command (${safety.reason})`);
+      }
     }
+  }
+
+  const manualProofSummary = validateManualProofs(caseDir, manifest);
+  for (const error of manualProofSummary.errors) {
+    fail(caseDir, error);
   }
 }
 

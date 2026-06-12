@@ -1,0 +1,18 @@
+{
+  "source": "synthetic",
+  "number": 2,
+  "title": "Keep actionable study cards visible",
+  "body": "Synthetic stateful case for provider/list semantics.",
+  "baseRefOid": "synthetic-base",
+  "headRefOid": "synthetic-head",
+  "mergeCommit": {
+    "oid": "synthetic-merge"
+  },
+  "files": [
+    {
+      "path": "src/cards.mjs",
+      "additions": 10,
+      "deletions": 1
+    }
+  ]
+}
