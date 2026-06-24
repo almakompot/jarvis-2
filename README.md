@@ -15,6 +15,7 @@ The repo contains:
 - `evals/shortcut-trap`: a tiny bug fixture designed to punish shallow fixes.
 - `evals/acceptance-gate`: an artifact-based independent verifier for disciplined Codex runs.
 - `evals/web-ui-replay`: first full meta-harness web UI replay from raw task through policy and report.
+- `evals/browser-extension-replay`: full Site Gate browser-extension replay plus syntax-only false-pass rejection.
 - `evals/voovo-pr-replay`: phase-two counterfactual PR replay benchmark scaffold.
 - `scripts/run-codex-eval.mjs`: runs baseline and resilient Codex CLI attempts.
 - `scripts/score-transcript.mjs`: scores the final Codex messages for resilience markers.
@@ -27,6 +28,7 @@ npm run meta:check
 npm run doctrine:validate
 npm run site-gate:check
 npm run web-ui:replay
+npm run browser-extension:replay
 npm run eval:score -- --input docs/sample-resilient-output.md
 npm run acceptance:verify
 ```
@@ -186,6 +188,15 @@ npm run web-ui:test-replay
 ```
 
 The replay creates a public synthetic VOOVO-style browse fixture, starts from the raw feature request, runs the task packet through the harness, proves the no-results and reset flow, verifies the completed run, accepts it through policy, and renders text/HTML reports under `tmp/web-ui-replay/`.
+
+To replay the browser-extension task class:
+
+```bash
+npm run browser-extension:replay
+npm run browser-extension:test-replay
+```
+
+The replay copies the public Site Gate extension into an isolated repo, validates the manifest/source, runs unpacked-extension CDP smoke, verifies invalid custom minutes, one-minute allow, five-minute allow, custom allow, same-origin reuse, and decline-to-blocked behavior, then proves a syntax-only false pass is rejected.
 
 ## How To Use In Codex App
 

@@ -133,6 +133,42 @@ export function resetBrowse() {
     return;
   }
 
+  if (scenario === "browser-extension-success") {
+    emit({ type: "assistant_message", content: "I am inspecting the browser-extension manifest, service worker, pages, and smoke scripts before claiming implementation." });
+    emit({
+      type: "command",
+      phase: "inspect",
+      command: "find manifest.json background.js gate.html gate.js blocked.html blocked.js scripts -type f | sort",
+      exitCode: 0,
+      stdout: [
+        "background.js",
+        "blocked.html",
+        "blocked.js",
+        "gate.html",
+        "gate.js",
+        "manifest.json",
+        "scripts/assert-negative-scenario.mjs",
+        "scripts/smoke-cdp.mjs",
+        "scripts/validate-extension.mjs"
+      ].join("\n") + "\n"
+    });
+    emit({ type: "inspection", message: "Manifest V3, background service worker, gate/blocked pages, and smoke scripts inspected before verification." });
+    emit({
+      type: "command",
+      phase: "verify",
+      command: "npm run test",
+      exitCode: 0,
+      stdout: "Site Gate extension manifest and source checks passed.\n",
+      proofObligationIds: ["P2"]
+    });
+    emit({
+      type: "final_message",
+      claimStatus: "attempt-complete",
+      content: "Browser-extension implementation attempt finished; smoke proof, verifier, and policy still need to accept it."
+    });
+    return;
+  }
+
   if (scenario === "failed-command") {
     emit({ type: "assistant_message", content: "I inspected first, then implemented a change." });
     emit({ type: "command", phase: "inspect", command: "ls package.json", exitCode: 0, stdout: "package.json\n" });

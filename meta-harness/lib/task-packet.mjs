@@ -990,7 +990,7 @@ function acceptedEvidenceTypesFor(proofId, taskClass) {
     return ["test-command", "build-command", "lint-command", "typecheck-command"];
   }
   if (proofId === "P3") {
-    return ["negative-test-command", "browser-smoke", "api-smoke", "cli-smoke", "manual-smoke-artifact", "data-fixture"];
+    return ["negative-test-command", "browser-extension-smoke", "browser-smoke", "api-smoke", "cli-smoke", "manual-smoke-artifact", "data-fixture"];
   }
   if (proofId === "P4") {
     if (taskClass === "browser-extension") {

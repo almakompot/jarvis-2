@@ -34,6 +34,7 @@ async function runSmoke(browserPath) {
   rmSync(artifactsDir, { recursive: true, force: true });
   mkdirSync(artifactsDir, { recursive: true });
   state.userDataDir = mkdtempSync(join(tmpdir(), "site-gate-chrome-"));
+  const trace = [];
 
   const sites = await Promise.all([
     startSite("one"),
@@ -89,19 +90,23 @@ async function runSmoke(browserPath) {
   await waitForGateReady(cdp);
   assertIncludes(gateUrl, encodeURIComponent(first), "gate URL should preserve target URL");
   await assertTextIncludes(cdp, "Do you want to open this site?");
+  trace.push({ action: "gate-render", target: first, observedUrl: gateUrl });
 
   await evaluate(cdp, "document.querySelector('#minutes').value = '0'; document.querySelector('#custom-form').requestSubmit();");
   await assertTextIncludes(cdp, "Enter a whole number of minutes");
   assertIncludes(await currentUrl(cdp), "/gate.html", "invalid custom minutes should stay on gate");
+  trace.push({ action: "invalid-custom-minutes", expected: "stay-on-gate", observedUrl: await currentUrl(cdp) });
 
   await evaluate(cdp, "document.querySelector('[data-minutes=\"1\"]').click();");
   await waitForUrl(cdp, (url) => url === first);
   await assertTextIncludes(cdp, "Site one");
+  trace.push({ action: "allow-one-minute", target: first, observedUrl: await currentUrl(cdp) });
 
   const sameOrigin = `${sites[0].url}/second`;
   await navigate(cdp, sameOrigin);
   await waitForUrl(cdp, (url) => url === sameOrigin);
   await assertTextIncludes(cdp, "Site one");
+  trace.push({ action: "same-origin-reuse", target: sameOrigin, observedUrl: await currentUrl(cdp) });
 
   const fiveMin = `${sites[1].url}/five`;
   await navigate(cdp, fiveMin);
@@ -110,6 +115,7 @@ async function runSmoke(browserPath) {
   await evaluate(cdp, "document.querySelector('[data-minutes=\"5\"]').click();");
   await waitForUrl(cdp, (url) => url === fiveMin);
   await assertTextIncludes(cdp, "Site two");
+  trace.push({ action: "allow-five-minutes", target: fiveMin, observedUrl: await currentUrl(cdp) });
 
   const custom = `${sites[2].url}/custom`;
   await navigate(cdp, custom);
@@ -118,6 +124,7 @@ async function runSmoke(browserPath) {
   await evaluate(cdp, "document.querySelector('#minutes').value = '2'; document.querySelector('#custom-form').requestSubmit();");
   await waitForUrl(cdp, (url) => url === custom);
   await assertTextIncludes(cdp, "Site three");
+  trace.push({ action: "allow-custom-minutes", minutes: 2, target: custom, observedUrl: await currentUrl(cdp) });
 
   const decline = `${sites[3].url}/decline`;
   await navigate(cdp, decline);
@@ -127,6 +134,25 @@ async function runSmoke(browserPath) {
   const blockedUrl = await waitForUrl(cdp, (url) => url.startsWith("chrome-extension://") && url.includes("/blocked.html"));
   assertIncludes(blockedUrl, encodeURIComponent(decline), "blocked URL should preserve declined target");
   await assertTextIncludes(cdp, "Site not opened");
+  trace.push({ action: "decline-to-blocked", target: decline, observedUrl: blockedUrl });
+
+  const screenshotPath = join(artifactsDir, "blocked-page.png");
+  const tracePath = join(artifactsDir, "trace.json");
+  const consoleLogPath = join(artifactsDir, "console.log");
+  const screenshot = await cdp.send("Page.captureScreenshot", { format: "png" });
+  writeFileSync(screenshotPath, Buffer.from(screenshot.data, "base64"));
+  writeFileSync(tracePath, `${JSON.stringify({ browserPath, extensionRoot, steps: trace }, null, 2)}\n`);
+  writeFileSync(consoleLogPath, [
+    `browser=${browserPath}`,
+    `extensionRoot=${extensionRoot}`,
+    `firstGate=${gateUrl}`,
+    `invalidCustomUrl=${trace.find((item) => item.action === "invalid-custom-minutes")?.observedUrl}`,
+    `oneMinuteUrl=${first}`,
+    `sameOriginUrl=${sameOrigin}`,
+    `fiveMinuteUrl=${fiveMin}`,
+    `customMinuteUrl=${custom}`,
+    `blockedUrl=${blockedUrl}`
+  ].join("\n") + "\n");
 
   await cdp.close();
   state.cdp = null;
@@ -136,8 +162,16 @@ async function runSmoke(browserPath) {
     id: "site-gate-real-browser-smoke",
     surface: "chrome-extension",
     status: "passed",
+    url: first,
+    page: blockedUrl,
     browserPath,
     extensionRoot,
+    extensionLoaded: true,
+    extensionContext: true,
+    manifestPath: "manifest.json",
+    screenshotPath: "blocked-page.png",
+    tracePath: "trace.json",
+    consoleLogPath: "console.log",
     assertions: [
       "first navigation was redirected to extension gate page before site content was shown",
       "invalid custom minutes stayed on gate and displayed validation error",

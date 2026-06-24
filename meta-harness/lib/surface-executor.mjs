@@ -210,7 +210,7 @@ function missingRequiredSurfaceProofs({ proofPlan, existingVerification, selecte
   const selectedProofIds = new Set(selected.flatMap((proof) => proof.proofObligationIds));
   const existingPassedSurfaceProofIds = new Set();
   for (const evidence of existingVerification.evidence || []) {
-    if (evidence.status !== "passed" || !surfaceEvidenceTypes.has(evidence.type)) {
+    if (evidence.status !== "passed" || !surfaceEvidenceTypes.has(evidence.type) || !evidence.surfaceResultId) {
       continue;
     }
     for (const proofId of evidence.proofObligationIds || []) {

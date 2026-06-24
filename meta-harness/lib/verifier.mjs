@@ -576,7 +576,7 @@ function verifySurfaceEvidence({ state }) {
     return;
   }
   const passedTypes = new Set((verification.evidence || [])
-    .filter((evidence) => evidence.status === "passed")
+    .filter((evidence) => evidence.status === "passed" && evidence.surfaceResultId)
     .map((evidence) => evidence.type));
   if (!requiredTypes.some((type) => passedTypes.has(type))) {
     addFinding(state, {

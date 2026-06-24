@@ -162,6 +162,17 @@ npm run web-ui:test-replay
 
 The replay must end with `verification: passed`, `verifier: passed`, and `policy: accepted`. `npm run check` includes the regression test.
 
+## Browser Extension Replay
+
+`evals/browser-extension-replay` contains the first full browser-extension replay. It copies the public Site Gate extension into isolated temporary repos, initializes task packets from the raw Site Gate request, runs the `browser-extension-success` fake implementation scenario, executes manifest validation and unpacked-extension CDP smoke, validates the generated extension scenario through the surface executor, and renders reports.
+
+```bash
+npm run browser-extension:replay
+npm run browser-extension:test-replay
+```
+
+The accepted run must pass with real `browser-extension-smoke` surface evidence. The syntax-only run intentionally labels `npm run syntax` as user smoke; verifier and policy must reject it because no passed surface-executor extension evidence exists.
+
 ## M8 CLI And Reports
 
 `meta-harness/scripts/meta.mjs` is the daily command surface. It delegates to the existing runner, verifier, policy, corpus, and run-envelope libraries instead of replacing their JSON artifacts.

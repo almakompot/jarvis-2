@@ -220,7 +220,7 @@ Then expand to:
 
 Do not start universal. Start with three task classes and make them hard to fake.
 
-Status: first web app replay exists in `evals/web-ui-replay`. It runs a public synthetic VOOVO-style browse empty-state/reset task from raw request and fixture repo through M1/M3 packet creation, M4 fake implementation, M5 command plus browser-smoke proof, M6 verifier, M9 policy, and M8 text/HTML reports. The replay is wired into `npm run check` via `npm run web-ui:test-replay`. Full browser automation and dev-server lifecycle remain future hardening.
+Status: first web app replay exists in `evals/web-ui-replay`. It runs a public synthetic VOOVO-style browse empty-state/reset task from raw request and fixture repo through M1/M3 packet creation, M4 fake implementation, M5 command plus browser-smoke proof, M6 verifier, M9 policy, and M8 text/HTML reports. A browser-extension replay now exists in `evals/browser-extension-replay`; it runs the public Site Gate task class through manifest validation, unpacked-extension CDP smoke, surface-evidence validation, verifier, policy, and report rendering, and it rejects a syntax-only false pass. Both replays are wired into `npm run check`. Full browser runner reuse and dev-server lifecycle remain future hardening.
 
 ## Order
 

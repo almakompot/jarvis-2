@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "kind": "meta-harness.browser-extension-replay-case",
+  "id": "site-gate-extension",
+  "title": "Site Gate browser-extension replay",
+  "implementationPlanVersion": "implementation-plan-v1-accepted-2026-06-24",
+  "controllingSections": ["19", "20", "21", "24", "25", "30", "31", "33"],
+  "runId": "browser-extension-site-gate",
+  "task": {
+    "raw": "Build a Chrome extension that asks before opening a site, with Actually no, 1 min, 5 min, custom minutes, invalid custom-minute validation, same-origin reuse after allow, and decline-to-blocked behavior.",
+    "workedExample": "Site Gate Browser Extension"
+  },
+  "fixture": {
+    "name": "public-site-gate-extension",
+    "taskClass": "browser-extension",
+    "source": "apps/site-gate-extension",
+    "notes": [
+      "The replay copies the public Site Gate extension into an isolated temporary repo.",
+      "The accepted run executes manifest validation and the unpacked-extension CDP smoke.",
+      "The syntax-only run intentionally claims pass without browser-extension smoke and must reject."
+    ]
+  },
+  "expected": {
+    "accepted": {
+      "runnerStatus": "implemented",
+      "verificationStatus": "passed",
+      "verifierStatus": "passed",
+      "policyDecision": "accepted",
+      "requiredEvidenceTypes": [
+        "repo-profile",
+        "test-command",
+        "browser-extension-smoke",
+        "negative-test-command",
+        "final-report"
+      ]
+    },
+    "syntaxOnly": {
+      "policyDecision": "rejected",
+      "requiredPolicyRules": ["POL-UI-001"]
+    }
+  },
+  "privacy": {
+    "classification": "public-synthetic-and-local-app",
+    "sanitized": true,
+    "containsPrivateData": false,
+    "allowedForCommit": true
+  }
+}

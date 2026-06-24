@@ -283,7 +283,7 @@ function evaluateSurfaceRules(state) {
   }
   const verification = state.artifacts.verification;
   const passedTypes = new Set((verification?.evidence || [])
-    .filter((evidence) => evidence.status === "passed")
+    .filter((evidence) => evidence.status === "passed" && evidence.surfaceResultId)
     .map((evidence) => evidence.type));
   if (requiredTypes.some((type) => passedTypes.has(type))) {
     return;

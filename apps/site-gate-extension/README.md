@@ -29,3 +29,5 @@ The smoke test launches a temporary Chromium browser profile with this unpacked 
 - `5 min` opens a separate target,
 - custom minutes open a separate target,
 - `Actually no` does not open the target and shows the local blocked page.
+
+It writes `tmp/site-gate-smoke/scenario.json` plus screenshot, trace, and console-log artifacts for meta-harness browser-extension evidence.
