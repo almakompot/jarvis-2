@@ -2,6 +2,7 @@
 
 import process from "node:process";
 
+import { notifyBlockedRun } from "../lib/block-notifier.mjs";
 import {
   cleanupRuns,
   createRerun,
@@ -47,7 +48,15 @@ try {
     const result = await runMetaCommand(parsed);
     console.log(`Runner status: ${result.status}`);
     console.log(`Run dir: ${result.runDir}`);
-    process.exit(["implemented", "blocked"].includes(result.status) ? 0 : 2);
+    if (result.status === "blocked") {
+      emitBlockedNotification({
+        runDir: result.runDir,
+        phase: "run",
+        reason: blockedRunReason(result),
+        resumeCommand: `npm run meta -- run --run ${result.runDir}`
+      });
+    }
+    process.exit(result.status === "implemented" ? 0 : result.status === "blocked" ? 3 : 2);
   } else if (command === "verify") {
     const parsed = parseVerifyArgs(args.rest);
     const result = await runVerifyPipeline(parsed);
@@ -55,6 +64,14 @@ try {
     console.log(`Run dir: ${result.runDir}`);
     for (const step of result.steps) {
       console.log(`- ${step.name}: ${step.status} (${step.count})`);
+    }
+    if (result.status === "blocked") {
+      emitBlockedNotification({
+        runDir: result.runDir,
+        phase: "verify",
+        reason: blockedVerifyReason(result),
+        resumeCommand: `npm run meta -- verify --run ${result.runDir}`
+      });
     }
     process.exit(result.status === "accepted" ? 0 : result.status === "blocked" ? 3 : result.status === "rejected" ? 2 : 0);
   } else if (command === "report") {
@@ -108,6 +125,27 @@ function parseTopLevel(argv) {
       rest: argv.slice(1)
     }
   };
+}
+
+function emitBlockedNotification({ runDir, phase, reason, resumeCommand }) {
+  const notification = notifyBlockedRun({ runDir, phase, reason, resumeCommand });
+  if (notification.status === "sent") {
+    console.error(`Blocked notification sent: ${notification.artifact}`);
+  } else {
+    console.error(`Blocked notification ${notification.status}: ${notification.skipReason || notification.failure || "unknown"}`);
+  }
+}
+
+function blockedRunReason(result) {
+  return result.runnerState?.failures?.[0]?.message
+    || result.runnerState?.terminalState?.reason
+    || "Runner stopped with a blocked status.";
+}
+
+function blockedVerifyReason(result) {
+  return result.policy?.decisionReason
+    || result.steps.find((step) => step.status === "blocked")?.name
+    || "Verification stopped with a blocked status.";
 }
 
 function parseInitArgs(argv) {

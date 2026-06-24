@@ -81,7 +81,7 @@ Do not report completion from memory or assistant prose. Use the policy decision
 - `rejected`: current artifacts do not support the completion claim. The default next actor is the agent/harness repair loop: fix implementation, proof, or evidence, then rerun verification and policy, or start a child run.
 - `blocked`: a real external condition prevents proof, such as missing credentials, unsafe approval boundary, unavailable target environment, or required live access. This is the user/operator-needed state.
 
-Rejected is repairable by default. Do not notify the user by default unless retries repeat, scope changes, or the safe next action is unclear. Blocked is the state that asks the user/operator for input. If blocked, name the condition and evidence. Do not use blocked for inconvenience.
+Rejected is repairable by default. Do not notify the user by default unless retries repeat, scope changes, or the safe next action is unclear. Blocked is the state that asks the user/operator for input. If blocked, name the condition and evidence. Do not use blocked for inconvenience. Blocked `run` and `verify` commands exit `3`, emit a macOS notification when available, and write `blocked-notification.json` with the resume command.
 
 ## Report Discipline
 
@@ -150,4 +150,5 @@ Use docs/meta-harness-new-session-usage.md and meta-harness/README.md.
 For any target repo feature request, create or inspect the .task-runs/<id> packet first.
 Completion means policy-decision.json is accepted, report output is evidence-linked, npm run check passes when package-level behavior changed, and remaining risk is explicit.
 Do not read .env* contents. Do not run deploy, push, send, publish, migration, production mutation, or cost-bearing external API commands without explicit approval recorded in artifacts.
+If blocked, stop after notification. Resume with `npm run meta -- run --run <run-dir>` for runner blockers or `npm run meta -- verify --run <run-dir>` for verification blockers.
 ```

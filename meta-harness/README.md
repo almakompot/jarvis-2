@@ -22,7 +22,7 @@ Decision meanings:
 
 - `accepted`: required proof passed, verifier found no blocking or major issues, and residual risk is recorded.
 - `rejected`: artifacts do not support the completion claim. The default next step is an agent/harness repair action: fix implementation, proof, or evidence, then rerun verification and policy.
-- `blocked`: an external condition prevents proof or progress. This is the user/operator input needed state.
+- `blocked`: an external condition prevents proof or progress. This is the user/operator input needed state. On macOS, blocked `run` and `verify` commands emit a native notification and write `blocked-notification.json`.
 
 ## Fresh Session Prompt
 
@@ -152,6 +152,18 @@ Blocked runs require user/operator input:
 - unclear scope that cannot be safely inferred
 
 Do not use `blocked` for ordinary implementation failure.
+
+Blocked exits are loud:
+
+- `meta run` exits `3` when the runner blocks.
+- `meta verify` exits `3` when policy or verification blocks.
+- macOS receives a native notification unless `META_HARNESS_NOTIFY_BLOCKED=0` is set.
+- `blocked-notification.json` records the notification payload, blocker, and resume command.
+
+Resume after unblocking:
+
+- Implementation runner blocker: resolve the condition, then run `npm run meta -- run --run <run-dir>`.
+- Verification blocker: resolve the condition, then run `npm run meta -- verify --run <run-dir>`.
 
 ## Failure Corpus
 

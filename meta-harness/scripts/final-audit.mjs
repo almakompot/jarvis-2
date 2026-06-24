@@ -122,7 +122,9 @@ const docRequirements = [
       "Final Report Format",
       "npm run meta:final-audit",
       "agent/harness repair action",
-      "user/operator input needed"
+      "user/operator input needed",
+      "blocked-notification.json",
+      "meta run` exits `3`"
     ]
   },
   {

@@ -10,6 +10,7 @@ import { runFakeCodex } from "../lib/fake-runner.mjs";
 import { runPolicyEngine } from "../lib/policy-engine.mjs";
 import { initTaskRun } from "../lib/task-packet.mjs";
 import { runCompletedRunVerifier } from "../lib/verifier.mjs";
+import { notifyBlockedRun, notificationMessage } from "../lib/block-notifier.mjs";
 
 test("M8 meta report snapshot for an accepted run leads with findings and evidence links", async (t) => {
   const { repo, runDir } = await createAcceptedCommandRun("m8-accepted-report");
@@ -57,6 +58,56 @@ test("M8 meta report snapshot for a blocked run shows blocker and next action", 
   assert.match(output, /^Findings:\n- \[blocking\] POL-BLOCKED-001: Runner state is blocked\./);
   assert.match(output, /Decision: blocked/);
   assert.match(output, /Next action:\n- User\/operator: resolve the blocking condition/);
+});
+
+test("M8 meta run exits loudly and records notification artifact when runner blocks", (t) => {
+  const repo = mkdtempSync(join(tmpdir(), "meta-harness-m8-blocked-run-"));
+  t.after(() => rmSync(repo, { recursive: true, force: true }));
+  mkdirSync(join(repo, "scripts"), { recursive: true });
+  writeFileSync(join(repo, "package.json"), `${JSON.stringify({ scripts: { test: "node scripts/pass.mjs" }, type: "module" }, null, 2)}\n`);
+  writeFileSync(join(repo, "scripts", "pass.mjs"), "console.log('pass');\n");
+
+  const init = runMeta(["init", "--repo", repo, "--task", "build a local helper", "--id", "m8-blocked-run"]);
+  assert.equal(init.status, 0, init.stderr);
+  const runDir = join(repo, ".task-runs", "m8-blocked-run");
+
+  const run = runMeta(["run", "--run", runDir, "--fake", "--scenario", "timeout", "--timeout-ms", "100"]);
+  assert.equal(run.status, 3, run.stderr);
+  assert.match(run.stdout, /Runner status: blocked/);
+  assert.match(run.stderr, /Blocked notification skipped: disabled/);
+  const notification = readJson(join(runDir, "blocked-notification.json"));
+  assert.equal(notification.status, "skipped");
+  assert.equal(notification.skipReason, "disabled");
+  assert.equal(notification.phase, "run");
+  assert.match(notification.resumeCommand, /npm run meta -- run --run/);
+});
+
+test("blocked notifier builds macOS notification payload without firing real osascript", (t) => {
+  const runDir = mkdtempSync(join(tmpdir(), "meta-harness-notifier-"));
+  t.after(() => rmSync(runDir, { recursive: true, force: true }));
+  const calls = [];
+
+  const result = notifyBlockedRun({
+    runDir,
+    phase: "verify",
+    reason: "Vercel production deployment approval is missing.",
+    resumeCommand: `npm run meta -- verify --run ${runDir}`,
+    platform: "darwin",
+    env: {},
+    runner: (executable, args) => {
+      calls.push({ executable, args });
+      return { status: 0, stderr: "" };
+    }
+  });
+
+  assert.equal(result.status, "sent");
+  assert.equal(calls[0].executable, "osascript");
+  assert.match(calls[0].args[1], /display notification/);
+  assert.match(calls[0].args[1], /Meta-Harness blocked/);
+  assert.match(notificationMessage(result), /Vercel production deployment approval is missing/);
+  const artifact = readJson(join(runDir, "blocked-notification.json"));
+  assert.equal(artifact.status, "sent");
+  assert.equal(artifact.phase, "verify");
 });
 
 test("M8 meta report gives a useful missing-file CLI error", async (t) => {
@@ -260,9 +311,14 @@ function writePassingFinalReportFromVerification({ runDir }) {
   writeJson(join(runDir, "final-report.json"), finalReport);
 }
 
-function runMeta(args) {
+function runMeta(args, options = {}) {
   return spawnSync(process.execPath, ["meta-harness/scripts/meta.mjs", ...args], {
     cwd: process.cwd(),
+    env: {
+      ...process.env,
+      META_HARNESS_NOTIFY_BLOCKED: "0",
+      ...(options.env || {})
+    },
     encoding: "utf8"
   });
 }
