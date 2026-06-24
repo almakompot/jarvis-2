@@ -185,6 +185,8 @@ Possible surfaces:
 
 Done means it can be used daily without fighting it.
 
+Status: M8 v1 exists as `npm run meta -- <command>` backed by `meta-harness/scripts/meta.mjs` and `meta-harness/lib/report-ux.mjs`. It exposes `init`, `run`, `verify`, `report`, `rerun`, `promote-failure`, and `cleanup` around repo-local run folders. Text reports lead with findings, then show policy decision, active rules, commands, missing proof, evidence paths, residual risk, and next actions. HTML reports write evidence-linked `html-report/index.html`. CLI tests cover accepted, rejected, blocked, missing-artifact, evidence-link, rerun, cleanup, and command-path behavior. Dashboard UX remains future work.
+
 ## M9: Policy And Enforcement
 
 Move from suggested discipline to hard gates.
@@ -200,7 +202,7 @@ Examples:
 
 This is where it becomes a harness, not a document.
 
-Status: M9 v1 exists in `meta-harness/lib/policy-engine.mjs` with CLI `npm run meta:policy`. It writes `policy-decision.json`, consumes verification/verifier/task-class/corpus/override inputs, distinguishes accepted/rejected/blocked, records fired rule IDs, supports explicit override records without erasing evidence, and has deterministic recomputation tests. Full report UX remains M8 work.
+Status: M9 v1 exists in `meta-harness/lib/policy-engine.mjs` with CLI `npm run meta:policy`. It writes `policy-decision.json`, consumes verification/verifier/task-class/corpus/override inputs, distinguishes accepted/rejected/blocked, records fired rule IDs, supports explicit override records without erasing evidence, and has deterministic recomputation tests.
 
 ## M10: Generalization
 

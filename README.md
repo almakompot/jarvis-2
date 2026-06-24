@@ -74,7 +74,7 @@ npm run meta:check
 
 Current enforcement: required artifacts must exist, requirements must map to proof obligations, proof obligations must map back to known requirements, secret paths must be forbidden, verification cannot claim passed without evidence, and final reports cannot claim passed without passed verification and cited evidence.
 
-Still unenforced: deep repo adapter inference, automatic corpus minimization/sanitization, and dashboard/report UX.
+Still unenforced: deep repo adapter inference, automatic corpus minimization/sanitization, and dashboard UX.
 
 ## Meta-Harness M4/M5
 
@@ -115,6 +115,20 @@ npm run meta:policy -- --run-dir /path/to/repo/.task-runs/<id>
 ```
 
 The policy engine writes `policy-decision.json` with `accepted`, `rejected`, or `blocked`. It consumes `verification.json`, `verifier-report.json`, task-class surface policy, optional `corpus-replay.json`, and optional `policy-overrides.json`; reject/block rules remain recorded even when an explicit override is accepted.
+
+Use the M8 CLI facade for daily runs:
+
+```bash
+npm run meta -- init --repo /path/to/repo --task "build the requested feature"
+npm run meta -- run --run /path/to/repo/.task-runs/<id>
+npm run meta -- verify --run /path/to/repo/.task-runs/<id>
+npm run meta -- report --run /path/to/repo/.task-runs/<id> --format text
+npm run meta -- report --run /path/to/repo/.task-runs/<id> --format html
+npm run meta -- rerun --from /path/to/repo/.task-runs/<id>
+npm run meta -- cleanup --repo /path/to/repo --dry-run
+```
+
+`meta report` renders findings first, then policy decision, command status, missing proof, evidence paths, residual risk, and next actions. HTML reports write to `html-report/index.html` unless `--output` is provided.
 
 Replay the M7 failure corpus:
 

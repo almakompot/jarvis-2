@@ -10,6 +10,7 @@
     "test:fixture:expected-fail": "node scripts/assert-fixture-fails.mjs",
     "test:scorer": "node scripts/test-scorer.mjs",
     "doctrine:validate": "node scripts/validate-doctrine.mjs",
+    "meta": "node meta-harness/scripts/meta.mjs",
     "meta:init": "node meta-harness/scripts/init-run.mjs",
     "meta:validate": "node meta-harness/scripts/validate-run.mjs",
     "meta:fake-runner": "node meta-harness/scripts/run-fake-runner.mjs",

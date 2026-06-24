@@ -1,6 +1,6 @@
 # Meta-Harness
 
-This directory contains the bounded M1-M7 plus M9 slice from `docs/meta-harness-roadmap.md`.
+This directory contains the bounded M1-M9 slice from `docs/meta-harness-roadmap.md`.
 
 It does three things:
 
@@ -13,11 +13,25 @@ It does three things:
 - M5 Surface Proof Executor: record runnable-surface evidence for browser, extension, API, CLI, data, visual, and manual proof obligations.
 - M6 Completed-Run Verifier: independently audit a completed run folder and write severity-classified findings to `verifier-report.json`.
 - M7 Failure Corpus: replay sanitized expected-fail and expected-pass cases against the verifier and policy engine.
+- M8 CLI/Report UX: expose daily `meta` commands and render findings-first text/HTML reports from run artifacts.
 - M9 Policy Engine: convert verification, verifier findings, task-class policy, optional corpus replay, and explicit overrides into `policy-decision.json`.
 
-It does not yet provide the full M8 daily CLI/report UX or automatic minimization and sanitization for promoted corpus cases.
+It does not yet provide a dashboard or automatic minimization and sanitization for promoted corpus cases.
 
 ## Commands
+
+```bash
+npm run meta -- init --repo /path/to/repo --task "build X"
+npm run meta -- run --run /path/to/repo/.task-runs/<id> --dry-run
+npm run meta -- verify --run /path/to/repo/.task-runs/<id>
+npm run meta -- report --run /path/to/repo/.task-runs/<id> --format text
+npm run meta -- report --run /path/to/repo/.task-runs/<id> --format html
+npm run meta -- rerun --from /path/to/repo/.task-runs/<id>
+npm run meta -- promote-failure --run /path/to/repo/.task-runs/<id> --category missing-smoke --case-id browse-reset
+npm run meta -- cleanup --repo /path/to/repo --dry-run
+```
+
+The older focused scripts remain available for direct component work:
 
 ```bash
 npm run meta:init -- --repo /path/to/repo --task "build X"
@@ -135,6 +149,24 @@ Committed cases must be public synthetic or otherwise sanitized:
 `npm run meta:corpus` builds deterministic fixture runs, applies the case mutation, reruns M6 and M9, and writes `tmp/meta-harness-corpus/replay-summary.json`. The current corpus includes five expected-fail cases for fake verification, missing browser smoke, forbidden `.env` edits, failed verification reported as passed, and proof timing before final edits. It also includes one expected-pass case proving a valid command-proof run is still accepted.
 
 `npm run meta:promote-failure` creates a private-staging skeleton from a rejected or blocked run. It records the source decision and expected rules but does not copy raw run artifacts; promoted cases must be minimized and sanitized before commit.
+
+## M8 CLI And Reports
+
+`meta-harness/scripts/meta.mjs` is the daily command surface. It delegates to the existing runner, verifier, policy, corpus, and run-envelope libraries instead of replacing their JSON artifacts.
+
+`npm run meta -- report --run <dir>` renders a text report that starts with findings, then shows:
+
+- policy decision and blocking reason
+- active policy rules
+- passed and failed commands with exit codes
+- missing proof obligations
+- evidence IDs and artifact paths
+- residual risk
+- next action
+
+`npm run meta -- report --run <dir> --format html` writes `html-report/index.html` with evidence links back to run-folder artifacts. JSON files remain authoritative; the report is a readable projection of the current run state.
+
+`meta rerun` creates a child run with `parent-run.json`. `meta cleanup --dry-run` lists only directories under repo-local `.task-runs/` that contain a matching `meta-harness.task-spec`; `--delete` is required before it removes anything.
 
 ## M9 Policy Engine
 
