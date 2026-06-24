@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Codex resilience protocol, skill, and evaluation harness.",
   "scripts": {
-    "check": "npm run doctrine:validate && npm run meta:check && npm run test:fixture:expected-fail && npm run test:scorer && npm run eval:score -- --input docs/sample-resilient-output.md && npm run acceptance:test && npm run acceptance:verify && npm run web-ui:test-replay && npm run browser-extension:test-replay && npm run site-gate:check && npm run voovo:test-repairs && npm run voovo:validate-cases",
+    "check": "npm run doctrine:validate && npm run meta:check && npm run test:fixture:expected-fail && npm run test:scorer && npm run eval:score -- --input docs/sample-resilient-output.md && npm run acceptance:test && npm run acceptance:verify && npm run web-ui:test-replay && npm run browser-extension:test-replay && npm run non-web:test-replay && npm run site-gate:check && npm run voovo:test-repairs && npm run voovo:validate-cases",
     "test:fixture": "node --test evals/shortcut-trap/test/*.test.mjs",
     "test:fixture:expected-fail": "node scripts/assert-fixture-fails.mjs",
     "test:scorer": "node scripts/test-scorer.mjs",
@@ -35,6 +35,8 @@
     "web-ui:test-replay": "node --test evals/web-ui-replay/scripts/*.test.mjs",
     "browser-extension:replay": "node evals/browser-extension-replay/scripts/run-replay.mjs",
     "browser-extension:test-replay": "node --test evals/browser-extension-replay/scripts/*.test.mjs",
+    "non-web:replay": "node evals/non-web-replay/scripts/run-replay.mjs",
+    "non-web:test-replay": "node --test evals/non-web-replay/scripts/*.test.mjs",
     "voovo:validate-cases": "node evals/voovo-pr-replay/scripts/validate-cases.mjs",
     "voovo:prepare-pr": "node evals/voovo-pr-replay/scripts/prepare-case-from-pr.mjs",
     "voovo:test-repairs": "node --test evals/voovo-pr-replay/scripts/*.test.mjs",

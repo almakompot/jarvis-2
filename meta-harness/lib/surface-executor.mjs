@@ -642,6 +642,7 @@ async function executeCliProof({ state, proof, repoProfile, timeoutMs, env }) {
 
 function validateDataProof({ state, proof }) {
   const startedAt = nextTimestamp(state);
+  const artifactAssertions = Array.isArray(proof.artifactAssertions) ? proof.artifactAssertions : [];
   const expectedArtifacts = Array.isArray(proof.expectedArtifacts)
     ? proof.expectedArtifacts
     : Array.isArray(proof.artifactPaths)
@@ -656,7 +657,9 @@ function validateDataProof({ state, proof }) {
       message: "Data proof must declare expectedArtifacts, artifactPaths, or manifestPath."
     });
   }
-  const artifacts = expectedArtifacts.map((artifactPath) => inspectArtifact({ state, inputPath: artifactPath }));
+  const assertedArtifactPaths = artifactAssertions.map((assertion) => assertion.path).filter(Boolean);
+  const artifactPaths = [...new Set([...expectedArtifacts, ...assertedArtifactPaths])];
+  const artifacts = artifactPaths.map((artifactPath) => inspectArtifact({ state, inputPath: artifactPath }));
   const manifest = proof.manifestPath ? readJsonArtifact({ state, inputPath: proof.manifestPath }) : null;
   if (manifest) {
     artifacts.push(inspectArtifact({ state, inputPath: proof.manifestPath }));
@@ -665,6 +668,15 @@ function validateDataProof({ state, proof }) {
   const missingFields = manifest?.ok
     ? missingManifestFields({ manifest: manifest.value, fields: proof.requiredManifestFields || [] })
     : [];
+  const manifestAssertionFailures = manifest?.ok
+    ? evaluateJsonAssertions({
+      source: "manifest",
+      value: manifest.value,
+      assertions: Array.isArray(proof.manifestAssertions) ? proof.manifestAssertions : []
+    })
+    : [];
+  const artifactAssertionFailures = evaluateArtifactAssertions({ state, assertions: artifactAssertions });
+  const assertionFailures = [...manifestAssertionFailures, ...artifactAssertionFailures];
   let status = "passed";
   let reason = null;
   let message = "Data artifact proof passed.";
@@ -680,6 +692,10 @@ function validateDataProof({ state, proof }) {
     status = "failed";
     reason = "missing-manifest-field";
     message = `Manifest missing required field(s): ${missingFields.join(", ")}.`;
+  } else if (assertionFailures.length > 0) {
+    status = "failed";
+    reason = "data-assertion-failed";
+    message = `Data proof assertion(s) failed: ${assertionFailures.map((failure) => failure.message).join("; ")}.`;
   }
   return surfaceProofFromArtifacts({
     state,
@@ -692,9 +708,77 @@ function validateDataProof({ state, proof }) {
     artifacts,
     details: {
       requiredManifestFields: proof.requiredManifestFields || [],
-      missingManifestFields: missingFields
+      missingManifestFields: missingFields,
+      manifestAssertions: Array.isArray(proof.manifestAssertions) ? proof.manifestAssertions : [],
+      artifactAssertions,
+      assertionFailures
     }
   });
+}
+
+function evaluateArtifactAssertions({ state, assertions }) {
+  const failures = [];
+  for (const assertion of assertions) {
+    const inputPath = assertion.path;
+    if (!inputPath) {
+      failures.push({ source: "artifact", path: null, message: "artifact assertion is missing path" });
+      continue;
+    }
+    const resolved = resolveArtifactPath({ state, inputPath, baseDir: state.repoPath });
+    if (!resolved.ok || !existsSync(resolved.absolutePath)) {
+      failures.push({ source: "artifact", path: inputPath, message: `${inputPath} is missing` });
+      continue;
+    }
+    const text = readFileSync(resolved.absolutePath, "utf8");
+    if (Array.isArray(assertion.includes)) {
+      for (const fragment of assertion.includes) {
+        if (!text.includes(String(fragment))) {
+          failures.push({ source: "artifact", path: inputPath, message: `${inputPath} does not include ${JSON.stringify(String(fragment))}` });
+        }
+      }
+    }
+    if (assertion.jsonPath) {
+      try {
+        const json = JSON.parse(text);
+        failures.push(...evaluateJsonAssertions({
+          source: inputPath,
+          value: json,
+          assertions: [assertion]
+        }));
+      } catch (error) {
+        failures.push({ source: "artifact", path: inputPath, message: `${inputPath} is not valid JSON: ${error.message}` });
+      }
+    }
+  }
+  return failures;
+}
+
+function evaluateJsonAssertions({ source, value, assertions }) {
+  const failures = [];
+  for (const assertion of assertions) {
+    const path = assertion.jsonPath || assertion.path;
+    if (!path) {
+      failures.push({ source, path: null, message: `${source} assertion is missing path` });
+      continue;
+    }
+    const actual = getByPath(value, path);
+    if (Object.prototype.hasOwnProperty.call(assertion, "equals") && !Object.is(actual, assertion.equals)) {
+      failures.push({ source, path, message: `${source}.${path} expected ${JSON.stringify(assertion.equals)} but got ${JSON.stringify(actual)}` });
+      continue;
+    }
+    if (Object.prototype.hasOwnProperty.call(assertion, "includes") && !String(actual ?? "").includes(String(assertion.includes))) {
+      failures.push({ source, path, message: `${source}.${path} does not include ${JSON.stringify(String(assertion.includes))}` });
+      continue;
+    }
+    if (Object.prototype.hasOwnProperty.call(assertion, "min") && !(Number(actual) >= Number(assertion.min))) {
+      failures.push({ source, path, message: `${source}.${path} expected >= ${assertion.min} but got ${JSON.stringify(actual)}` });
+      continue;
+    }
+    if (Object.prototype.hasOwnProperty.call(assertion, "max") && !(Number(actual) <= Number(assertion.max))) {
+      failures.push({ source, path, message: `${source}.${path} expected <= ${assertion.max} but got ${JSON.stringify(actual)}` });
+    }
+  }
+  return failures;
 }
 
 function validateArtifactProof({ state, proof, artifactField, handler }) {

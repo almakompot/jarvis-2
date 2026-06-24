@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "kind": "meta-harness.non-web-replay-case",
+  "id": "hungarian-ocr-pipeline",
+  "title": "Hungarian old-doc OCR data-pipeline replay",
+  "implementationPlanVersion": "implementation-plan-v1-accepted-2026-06-24",
+  "controllingSections": ["19", "20", "21", "24", "25", "30", "31", "33"],
+  "runId": "non-web-hungarian-ocr",
+  "task": {
+    "raw": "Add a local OCR/data pipeline smoke that rejects outputs missing searchable PDF text layer evidence. It must run on a Hungarian old-doc fixture, generate a manifest, searchable text, and search index artifacts, handle a missing-text-layer invalid fixture, and record that no external OCR API cost or live approval is used.",
+    "workedExample": "hungarian-old-docs-ocr"
+  },
+  "fixture": {
+    "name": "synthetic-hungarian-ocr-pipeline",
+    "taskClass": "data-pipeline",
+    "notes": [
+      "The replay writes a local package with a real pipeline CLI and fixture files.",
+      "The accepted run executes the pipeline CLI, invalid-input assertion, and data surface artifact assertions.",
+      "The weak-artifact run writes files that exist but lack searchable text-layer content and must reject."
+    ]
+  },
+  "expected": {
+    "accepted": {
+      "runnerStatus": "implemented",
+      "verificationStatus": "passed",
+      "verifierStatus": "passed",
+      "policyDecision": "accepted",
+      "requiredEvidenceTypes": [
+        "repo-profile",
+        "test-command",
+        "negative-test-command",
+        "data-fixture",
+        "final-report"
+      ],
+      "requiredSurfaceEvidenceTypes": ["data-fixture"]
+    },
+    "weakArtifact": {
+      "verificationStatus": "failed",
+      "policyDecision": "rejected",
+      "requiredPolicyRules": ["POL-VERIFY-002", "POL-SURFACE-001"],
+      "requiredSurfaceReason": "data-assertion-failed"
+    }
+  },
+  "privacy": {
+    "classification": "public-synthetic-and-local-app",
+    "sanitized": true,
+    "containsPrivateData": false,
+    "allowedForCommit": true
+  }
+}

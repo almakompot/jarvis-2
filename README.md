@@ -16,6 +16,7 @@ The repo contains:
 - `evals/acceptance-gate`: an artifact-based independent verifier for disciplined Codex runs.
 - `evals/web-ui-replay`: first full meta-harness web UI replay from raw task through policy and report.
 - `evals/browser-extension-replay`: full Site Gate browser-extension replay plus syntax-only false-pass rejection.
+- `evals/non-web-replay`: full data-pipeline replay plus weak generated-artifact rejection.
 - `evals/voovo-pr-replay`: phase-two counterfactual PR replay benchmark scaffold.
 - `scripts/run-codex-eval.mjs`: runs baseline and resilient Codex CLI attempts.
 - `scripts/score-transcript.mjs`: scores the final Codex messages for resilience markers.
@@ -29,6 +30,7 @@ npm run doctrine:validate
 npm run site-gate:check
 npm run web-ui:replay
 npm run browser-extension:replay
+npm run non-web:replay
 npm run eval:score -- --input docs/sample-resilient-output.md
 npm run acceptance:verify
 ```
@@ -197,6 +199,15 @@ npm run browser-extension:test-replay
 ```
 
 The replay copies the public Site Gate extension into an isolated repo, validates the manifest/source, runs unpacked-extension CDP smoke, verifies invalid custom minutes, one-minute allow, five-minute allow, custom allow, same-origin reuse, and decline-to-blocked behavior, then proves a syntax-only false pass is rejected.
+
+To replay the non-web data-pipeline task class:
+
+```bash
+npm run non-web:replay
+npm run non-web:test-replay
+```
+
+The replay creates a synthetic Hungarian old-doc OCR fixture, invokes the actual local pipeline CLI, verifies missing-text-layer invalid input, validates generated manifest/searchable-text/search-index artifacts beyond existence, records zero external OCR cost and no approval requirement, then proves weak placeholder artifacts are rejected.
 
 ## How To Use In Codex App
 

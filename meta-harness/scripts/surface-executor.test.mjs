@@ -202,6 +202,99 @@ test("surface executor fails data proof when expected generated output is missin
   assertStructuralValidation(runDir);
 });
 
+test("surface executor validates data manifest values and artifact contents", async (t) => {
+  const { repo, runDir } = createSurfaceRun({
+    runId: "surface-data-content-pass",
+    taskClass: "data-pipeline",
+    files: {
+      "out/manifest.json": JSON.stringify({
+        status: "passed",
+        textLayer: { searchable: true, characters: 42 },
+        cost: { externalApiCalls: 0 }
+      }, null, 2),
+      "out/searchable.txt": "Searchable text layer contains Arvizturo tukorfurogep.\n",
+      "out/index.json": JSON.stringify({ documentId: "hu-old-doc-001", tokens: ["arvizturo"] }, null, 2)
+    }
+  });
+  t.after(() => rmSync(repo, { recursive: true, force: true }));
+  configureSurfaceProof(runDir, {
+    taskClass: "data-pipeline",
+    acceptedEvidenceTypes: ["data-fixture"],
+    surfaceProofs: [{
+      id: "S1",
+      handler: "data",
+      evidenceType: "data-fixture",
+      proofObligationIds: ["P4"],
+      expectedArtifacts: ["out/searchable.txt", "out/index.json"],
+      manifestPath: "out/manifest.json",
+      requiredManifestFields: ["status", "textLayer.searchable", "cost.externalApiCalls"],
+      manifestAssertions: [
+        { path: "status", equals: "passed" },
+        { path: "textLayer.searchable", equals: true },
+        { path: "textLayer.characters", min: 20 },
+        { path: "cost.externalApiCalls", equals: 0 }
+      ],
+      artifactAssertions: [
+        { path: "out/searchable.txt", includes: ["Searchable text layer", "Arvizturo"] },
+        { path: "out/index.json", jsonPath: "documentId", equals: "hu-old-doc-001" }
+      ]
+    }]
+  });
+
+  const result = await runSurfaceProofExecutor({ runDir, timeoutMs: 1000 });
+
+  assert.equal(result.status, "passed");
+  const verification = readJson(join(runDir, "verification.json"));
+  assert.equal(verification.surfaceResults[0].reason, null);
+  assert.equal(verification.proofObligations[0].status, "passed");
+  assertStructuralValidation(runDir);
+});
+
+test("surface executor fails data proof when existing artifacts have wrong content", async (t) => {
+  const { repo, runDir } = createSurfaceRun({
+    runId: "surface-data-content-fail",
+    taskClass: "data-pipeline",
+    files: {
+      "out/manifest.json": JSON.stringify({
+        status: "passed",
+        textLayer: { searchable: false, characters: 0 },
+        cost: { externalApiCalls: 0 }
+      }, null, 2),
+      "out/searchable.txt": "placeholder output\n"
+    }
+  });
+  t.after(() => rmSync(repo, { recursive: true, force: true }));
+  configureSurfaceProof(runDir, {
+    taskClass: "data-pipeline",
+    acceptedEvidenceTypes: ["data-fixture"],
+    surfaceProofs: [{
+      id: "S1",
+      handler: "data",
+      evidenceType: "data-fixture",
+      proofObligationIds: ["P4"],
+      expectedArtifacts: ["out/searchable.txt"],
+      manifestPath: "out/manifest.json",
+      requiredManifestFields: ["status", "textLayer.searchable", "cost.externalApiCalls"],
+      manifestAssertions: [
+        { path: "textLayer.searchable", equals: true },
+        { path: "textLayer.characters", min: 20 }
+      ],
+      artifactAssertions: [
+        { path: "out/searchable.txt", includes: ["Searchable text layer"] }
+      ]
+    }]
+  });
+
+  const result = await runSurfaceProofExecutor({ runDir, timeoutMs: 1000 });
+
+  assert.equal(result.status, "failed");
+  const verification = readJson(join(runDir, "verification.json"));
+  assert.equal(verification.surfaceResults[0].reason, "data-assertion-failed");
+  assert.match(verification.surfaceResults[0].message, /textLayer\.searchable/);
+  assert.equal(verification.proofObligations[0].status, "failed");
+  assertStructuralValidation(runDir);
+});
+
 test("surface executor requires concrete manual artifact paths", async (t) => {
   const { repo, runDir } = createSurfaceRun({ runId: "surface-manual-missing-artifact", taskClass: "unknown" });
   t.after(() => rmSync(repo, { recursive: true, force: true }));

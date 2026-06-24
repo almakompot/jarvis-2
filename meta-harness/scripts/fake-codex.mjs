@@ -169,6 +169,41 @@ export function resetBrowse() {
     return;
   }
 
+  if (scenario === "data-pipeline-success") {
+    emit({ type: "assistant_message", content: "I am inspecting the data-pipeline CLI, fixtures, generated-artifact scripts, and approval boundary before claiming implementation." });
+    emit({
+      type: "command",
+      phase: "inspect",
+      command: "find package.json bin src scripts fixtures docs -type f | sort",
+      exitCode: 0,
+      stdout: [
+        "bin/hu-ocr-smoke.mjs",
+        "docs/approval-boundary.md",
+        "fixtures/good-old-doc.txt",
+        "fixtures/missing-text-layer.txt",
+        "package.json",
+        "scripts/assert-negative.mjs",
+        "scripts/test-pipeline.mjs",
+        "src/ocr-quality.mjs"
+      ].join("\n") + "\n"
+    });
+    emit({ type: "inspection", message: "OCR pipeline CLI, fixtures, tests, and local-only cost/approval boundary inspected before verification." });
+    emit({
+      type: "command",
+      phase: "verify",
+      command: "npm run test",
+      exitCode: 0,
+      stdout: "ok - OCR quality helpers preserve searchable text and token evidence\n",
+      proofObligationIds: ["P2"]
+    });
+    emit({
+      type: "final_message",
+      claimStatus: "attempt-complete",
+      content: "Data-pipeline implementation attempt finished; pipeline smoke, artifact proof, verifier, and policy still need to accept it."
+    });
+    return;
+  }
+
   if (scenario === "failed-command") {
     emit({ type: "assistant_message", content: "I inspected first, then implemented a change." });
     emit({ type: "command", phase: "inspect", command: "ls package.json", exitCode: 0, stdout: "package.json\n" });

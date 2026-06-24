@@ -173,6 +173,17 @@ npm run browser-extension:test-replay
 
 The accepted run must pass with real `browser-extension-smoke` surface evidence. The syntax-only run intentionally labels `npm run syntax` as user smoke; verifier and policy must reject it because no passed surface-executor extension evidence exists.
 
+## Non-Web Replay
+
+`evals/non-web-replay` contains the first full data-pipeline replay. It creates a synthetic Hungarian old-doc OCR fixture repo, initializes task packets from the raw OCR/data request, runs the `data-pipeline-success` fake implementation scenario, invokes the actual local pipeline CLI, validates invalid-input behavior, checks generated artifacts through manifest value and content assertions, and renders reports.
+
+```bash
+npm run non-web:replay
+npm run non-web:test-replay
+```
+
+The accepted run must pass with real `data-fixture` surface evidence. The weak-artifact run intentionally writes files that exist but lack searchable text-layer content; verifier and policy must reject it because generated artifact existence is not enough.
+
 ## M8 CLI And Reports
 
 `meta-harness/scripts/meta.mjs` is the daily command surface. It delegates to the existing runner, verifier, policy, corpus, and run-envelope libraries instead of replacing their JSON artifacts.

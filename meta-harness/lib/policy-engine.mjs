@@ -355,7 +355,7 @@ function evaluateVerifierRules(state) {
 }
 
 function ruleFromVerifierFinding(finding) {
-  const mapped = mapVerifierRule(finding.ruleId);
+  const mapped = mapVerifierRule(finding);
   return {
     ruleId: mapped.ruleId,
     decision: mapped.decision,
@@ -364,14 +364,17 @@ function ruleFromVerifierFinding(finding) {
     findingId: finding.id || null,
     requirementIds: finding.requirementIds || [],
     proofObligationIds: finding.proofObligationIds || [],
+    taskClass: finding.taskClass || null,
     message: finding.message,
     evidence: finding.evidence || []
   };
 }
 
-function mapVerifierRule(ruleId) {
+function mapVerifierRule(finding) {
+  const ruleId = finding.ruleId;
   if (ruleId === "surface.required-evidence.missing") {
-    return { ruleId: "POL-UI-001", decision: "reject" };
+    const isUi = ["web-ui", "browser-extension"].includes(finding.taskClass);
+    return { ruleId: isUi ? "POL-UI-001" : "POL-SURFACE-001", decision: "reject" };
   }
   if (ruleId === "changed-files.forbidden-path") {
     return { ruleId: "POL-FILES-001", decision: "reject" };

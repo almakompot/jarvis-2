@@ -583,6 +583,7 @@ function verifySurfaceEvidence({ state }) {
       severity: "blocking",
       ruleId: "surface.required-evidence.missing",
       message: `${spec.taskClass} tasks require passing runnable-surface evidence (${requiredTypes.join(", ")}).`,
+      taskClass: spec.taskClass,
       evidence: ["proof-plan.json", "verification.json"]
     });
   }
@@ -768,12 +769,13 @@ function addFinding(state, finding) {
   }
 }
 
-function rawFinding({ severity, ruleId, message, evidence = [], requirementIds = [], proofObligationIds = [] }) {
+function rawFinding({ severity, ruleId, message, evidence = [], requirementIds = [], proofObligationIds = [], taskClass = null }) {
   return {
     severity,
     ruleId,
     requirementIds,
     proofObligationIds,
+    taskClass,
     message,
     evidence
   };
