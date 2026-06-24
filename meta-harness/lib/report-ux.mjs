@@ -51,7 +51,7 @@ export function writeRunReport({ runDir, format = "text", outputPath = null } = 
   return { report, outputPath: target };
 }
 
-export async function runMetaCommand({ runDir, executable = "codex", sandbox = "workspace-write", dryRun = false, fake = false, scenario = "success", timeoutMs = 120000 } = {}) {
+export async function runMetaCommand({ runDir, executable = "codex", sandbox = "workspace-write", codexArgs = [], dryRun = false, fake = false, scenario = "success", timeoutMs = 120000 } = {}) {
   if (fake) {
     return runFakeMetaCommand({ runDir, scenario, timeoutMs });
   }
@@ -59,6 +59,7 @@ export async function runMetaCommand({ runDir, executable = "codex", sandbox = "
     runDir,
     executable,
     sandbox,
+    extraArgs: codexArgs,
     dryRun,
     totalTimeoutMs: timeoutMs
   });

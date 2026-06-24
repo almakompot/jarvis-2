@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -271,6 +271,88 @@ test("M8 meta run can initialize from repo and task in one command", (t) => {
   assert.match(result.stdout, /Runner status: implemented/);
   assert.match(result.stdout, /Run dir:/);
   assert.match(readFileSync(join(repo, ".task-runs", "m8-combined-run", "runner-state.json"), "utf8"), /implemented/);
+});
+
+test("M8 meta run passes Codex exec args through the CLI", (t) => {
+  const repo = mkdtempSync(join(tmpdir(), "meta-harness-m8-codex-args-"));
+  t.after(() => rmSync(repo, { recursive: true, force: true }));
+  mkdirSync(join(repo, "scripts"), { recursive: true });
+  writeFileSync(join(repo, "package.json"), `${JSON.stringify({ scripts: { test: "node scripts/pass.mjs" }, type: "module" }, null, 2)}\n`);
+  writeFileSync(join(repo, "scripts", "pass.mjs"), "console.log('codex args proof');\n");
+  writeFileSync(join(repo, "README.md"), "# M8 Codex Args\n");
+
+  const fakeCodex = join(repo, "fake-codex.mjs");
+  writeFileSync(fakeCodex, `#!/usr/bin/env node
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import process from "node:process";
+
+const args = process.argv.slice(2);
+if (args[0] === "--version") {
+  console.log("codex-cli 999.0.0-test");
+  process.exit(0);
+}
+if (args[0] === "exec" && args.includes("--help")) {
+  console.log(\`Usage: codex exec [OPTIONS] [PROMPT]
+  -C, --cd <DIR>
+  -s, --sandbox <SANDBOX_MODE>
+      --skip-git-repo-check
+      --json
+  -o, --output-last-message <FILE>
+      --ephemeral\`);
+  process.exit(0);
+}
+if (args[0] !== "exec") {
+  console.error("unknown fake codex command");
+  process.exit(1);
+}
+
+process.stdin.setEncoding("utf8");
+process.stdin.resume();
+process.stdin.on("end", () => {
+  const repoPath = valueAfter("--cd");
+  const lastMessagePath = valueAfter("--output-last-message");
+  const target = join(repoPath, "src", "cli-codex-args.js");
+  mkdirSync(dirname(target), { recursive: true });
+  writeFileSync(target, "export const cliCodexArgs = true;\\n");
+  if (lastMessagePath) {
+    mkdirSync(dirname(lastMessagePath), { recursive: true });
+    writeFileSync(lastMessagePath, "Implementation attempt changed src/cli-codex-args.js; verification still pending.");
+  }
+  console.log(JSON.stringify({ type: "agent_message", message: "Implemented fake CLI codex args change." }));
+});
+
+function valueAfter(flag) {
+  const index = args.indexOf(flag);
+  return index >= 0 ? args[index + 1] : "";
+}
+`);
+  chmodSync(fakeCodex, 0o755);
+
+  const result = runMeta([
+    "run",
+    "--repo",
+    repo,
+    "--task",
+    "build a local internal helper with command proof",
+    "--id",
+    "m8-codex-args",
+    "--executable",
+    fakeCodex,
+    "--codex-arg",
+    "--ignore-user-config",
+    "--codex-arg",
+    "--model",
+    "--codex-arg",
+    "gpt-5.5"
+  ]);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Runner status: implemented/);
+  const runnerConfig = readJson(join(repo, ".task-runs", "m8-codex-args", "runner-config.json"));
+  assert.ok(runnerConfig.command.includes("--ignore-user-config"));
+  assert.ok(runnerConfig.command.includes("--model"));
+  assert.ok(runnerConfig.command.includes("gpt-5.5"));
 });
 
 async function createAcceptedCommandRun(runId) {

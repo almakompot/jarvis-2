@@ -16,6 +16,12 @@ npm run meta -- verify --run /path/to/repo/.task-runs/<id>
 npm run meta -- report --run /path/to/repo/.task-runs/<id> --format text
 ```
 
+If local Codex config is not suitable for a harness run, pass Codex `exec` flags through with repeated `--codex-arg` entries:
+
+```bash
+npm run meta -- run --repo /path/to/repo --task "build X" --codex-arg --ignore-user-config --codex-arg --model --codex-arg gpt-5.5
+```
+
 The report is readable, but the JSON artifacts are authoritative. Do not report completion unless `policy-decision.json` says `accepted`.
 
 Decision meanings:

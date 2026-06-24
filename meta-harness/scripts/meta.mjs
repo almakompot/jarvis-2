@@ -200,6 +200,7 @@ function parseRunArgs(argv) {
     overwrite: false,
     executable: "codex",
     sandbox: "workspace-write",
+    codexArgs: [],
     dryRun: false,
     fake: false,
     scenario: "success",
@@ -221,6 +222,8 @@ function parseRunArgs(argv) {
       args.executable = argv[++index];
     } else if (item === "--sandbox") {
       args.sandbox = argv[++index];
+    } else if (item === "--codex-arg" || item === "--codex-extra-arg") {
+      args.codexArgs.push(argv[++index]);
     } else if (item === "--dry-run") {
       args.dryRun = true;
     } else if (item === "--fake") {
@@ -370,7 +373,7 @@ function requireRun(runDir) {
 function printHelp() {
   console.log(`Usage:
   meta init --repo /path/to/repo --task "build X" [--id run-id]
-  meta run --repo /path/to/repo --task "build X" [--id run-id] [--dry-run]
+  meta run --repo /path/to/repo --task "build X" [--id run-id] [--dry-run] [--codex-arg arg]
   meta run --run /path/to/.task-runs/<id> [--dry-run]
   meta verify --run /path/to/.task-runs/<id>
   meta report --run /path/to/.task-runs/<id> [--format text|html] [--output path]
