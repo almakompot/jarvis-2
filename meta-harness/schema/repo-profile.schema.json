@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvis.local/meta-harness/repo-profile.schema.json",
+  "title": "Meta Harness Repo Profile",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "kind",
+    "runId",
+    "repoPath",
+    "targetPath",
+    "adapterStatus",
+    "git",
+    "package",
+    "frameworkSignals",
+    "testSignals",
+    "devServer",
+    "surfaces",
+    "sensitivePathPolicy",
+    "liveSystemRisks"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "kind": { "const": "meta-harness.repo-profile" },
+    "runId": { "type": "string", "minLength": 1 },
+    "repoPath": { "type": "string", "minLength": 1 },
+    "targetPath": { "type": "string", "minLength": 1 },
+    "adapterStatus": { "const": "m2-core" },
+    "git": {
+      "type": "object",
+      "required": ["isRepo", "dirty", "dirtySummary", "statusEntries"]
+    },
+    "package": {
+      "type": "object",
+      "required": ["hasPackageJson", "manager", "managerSignals", "scripts", "scriptNames", "scriptClassifications", "dependencies"],
+      "properties": {
+        "hasPackageJson": { "type": "boolean" },
+        "manager": { "type": ["string", "null"] },
+        "managerGuess": { "type": ["string", "null"] },
+        "managerSignals": { "type": "array" },
+        "scripts": { "type": "object" },
+        "scriptNames": { "type": "array" },
+        "scriptClassifications": { "type": "array" },
+        "dependencies": { "type": "array" }
+      }
+    },
+    "frameworkSignals": { "type": "array" },
+    "testSignals": { "type": "array" },
+    "devServer": {
+      "type": "object",
+      "required": ["candidates", "ports", "configEvidence"]
+    },
+    "surfaces": { "type": "object" },
+    "sensitivePathPolicy": {
+      "type": "object",
+      "required": ["forbiddenPatterns", "detectedSensitivePaths", "contentsRead"],
+      "properties": {
+        "contentsRead": { "const": false }
+      }
+    },
+    "liveSystemRisks": { "type": "array" }
+  }
+}

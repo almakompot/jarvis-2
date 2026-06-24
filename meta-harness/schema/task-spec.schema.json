@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvis.local/meta-harness/task-spec.schema.json",
+  "title": "Meta Harness Task Spec",
+  "type": "object",
+  "required": ["schemaVersion", "kind", "runId", "task", "taskClass", "compiler", "repoSignals", "extractedBehavior", "requirements", "nonRequirements", "risks", "userFlows", "requiredTests", "manualSmoke", "proofObligations"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "kind": { "const": "meta-harness.task-spec" },
+    "runId": { "type": "string", "minLength": 1 },
+    "task": {
+      "type": "object",
+      "required": ["raw", "title", "summary"],
+      "properties": {
+        "raw": { "type": "string", "minLength": 10 },
+        "title": { "type": "string", "minLength": 1 },
+        "summary": { "type": "string", "minLength": 10 },
+        "class": { "type": "string", "minLength": 1 }
+      }
+    },
+    "taskClass": { "type": "string", "minLength": 1 },
+    "compiler": {
+      "type": "object",
+      "required": ["milestone", "mode", "specificityLevel"]
+    },
+    "repoSignals": { "type": "object" },
+    "extractedBehavior": { "type": "object" },
+    "requirements": { "type": "array", "minItems": 1 },
+    "nonRequirements": { "type": "array", "minItems": 1 },
+    "risks": { "type": "array", "minItems": 1 },
+    "userFlows": { "type": "array", "minItems": 1 },
+    "requiredTests": { "type": "array", "minItems": 1 },
+    "manualSmoke": { "type": "object" },
+    "proofObligations": { "type": "array", "minItems": 1 }
+  }
+}

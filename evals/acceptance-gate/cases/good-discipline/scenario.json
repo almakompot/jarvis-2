@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "scenario.csv-trim",
+  "surface": "library",
+  "claim": "A caller receives trimmed CSV cells from the parser.",
+  "steps": [
+    "Call parseCsv with spaced cells.",
+    "Assert returned cells are trimmed."
+  ],
+  "status": "passed",
+  "observed": {
+    "input": " a, b ",
+    "output": ["a", "b"]
+  }
+}
+

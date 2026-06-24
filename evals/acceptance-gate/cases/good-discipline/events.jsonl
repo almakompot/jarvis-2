@@ -1,0 +1,5 @@
+{"id":"cmd.inspect-src","type":"command","phase":"inspect","command":"sed -n '1,160p' src/csv.mjs","exitCode":0}
+{"id":"edit.patch","type":"file_change","phase":"edit","path":"src/csv.mjs","action":"update"}
+{"id":"edit.test","type":"file_change","phase":"edit","path":"test/csv.test.mjs","action":"update"}
+{"id":"cmd.test","type":"command","phase":"verify","command":"npm test","exitCode":0}
+

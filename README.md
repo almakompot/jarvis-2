@@ -7,7 +7,12 @@ The repo contains:
 - `AGENTS.md`: always-on execution protocol for this repo.
 - `.agents/skills/resilient-execution/SKILL.md`: reusable Codex skill.
 - `prompts/resilience-levels.md`: copyable task contracts.
+- `docs/fresh-repo-feature-protocol.md`: testing-first doctrine for a fresh context feature request.
+- `docs/meta-harness-roadmap.md`: milestone roadmap for turning the doctrine into a real meta-harness.
+- `meta-harness`: task compiler, run-envelope generator, Codex runner wrapper, proof executors, completed-run verifier, and policy engine.
+- `apps/site-gate-extension`: Chrome extension example with a real browser smoke test.
 - `evals/shortcut-trap`: a tiny bug fixture designed to punish shallow fixes.
+- `evals/acceptance-gate`: an artifact-based independent verifier for disciplined Codex runs.
 - `evals/voovo-pr-replay`: phase-two counterfactual PR replay benchmark scaffold.
 - `scripts/run-codex-eval.mjs`: runs baseline and resilient Codex CLI attempts.
 - `scripts/score-transcript.mjs`: scores the final Codex messages for resilience markers.
@@ -16,10 +21,99 @@ The repo contains:
 
 ```bash
 npm run check
+npm run meta:check
+npm run doctrine:validate
+npm run site-gate:check
 npm run eval:score -- --input docs/sample-resilient-output.md
+npm run acceptance:verify
 ```
 
 `npm run check` expects the bundled shortcut-trap fixture to fail before Codex touches it. The live eval copies that broken fixture to `tmp/` and asks Codex to fix the copy.
+
+## Fresh Session Contract
+
+Start Codex in this repo and give the new session this exact contract:
+
+```text
+Use docs/fresh-repo-feature-protocol.md as the operating protocol.
+Before final, run npm run check.
+Done means the changed surface was exercised the way a user will try it, and the final answer must separate verified facts from remaining risk.
+```
+
+For smaller runs, replace `npm run check` with the narrow command for the touched surface, but only when you name why the narrower proof is enough.
+
+## Meta-Harness M1/M3
+
+Create a frozen task packet and run envelope before implementation:
+
+```bash
+npm run meta:init -- --repo /path/to/repo --task "build the requested feature"
+```
+
+That creates:
+
+```text
+/path/to/repo/.task-runs/<id>/
+  task.md
+  repo-profile.json
+  spec.json
+  proof-plan.json
+  allowed-files.json
+  events.jsonl
+  verification.json
+  final-report.json
+```
+
+Validate a generated packet:
+
+```bash
+npm run meta:validate -- --run-dir /path/to/repo/.task-runs/<id>
+npm run meta:check
+```
+
+Current enforcement: required artifacts must exist, requirements must map to proof obligations, proof obligations must map back to known requirements, secret paths must be forbidden, verification cannot claim passed without evidence, and final reports cannot claim passed without passed verification and cited evidence.
+
+Still unenforced: deep repo adapter inference, corpus promotion, and dashboard/report UX.
+
+## Meta-Harness M4/M5
+
+Run the real Codex wrapper against an existing task packet:
+
+```bash
+npm run meta:codex-runner -- --run-dir /path/to/repo/.task-runs/<id>
+```
+
+Run the command proof executor against `proof-plan.json` and `spec.requiredTests`:
+
+```bash
+npm run meta:verify-commands -- --run-dir /path/to/repo/.task-runs/<id>
+```
+
+The command proof executor runs allowed local proof commands in the profiled target repo, captures stdout/stderr/exit/timing into `evidence/commands/`, appends executed commands to `command-log.jsonl`, appends verification events to `events.jsonl`, and updates `verification.json` by requirement and proof-obligation ID. Missing or unsafe commands are blocked before execution, and failed or timed-out commands cannot satisfy proof obligations. Reruns append new evidence instead of overwriting old failures.
+
+Run non-shell surface proof from `proof-plan.json` `surfaceProofs`:
+
+```bash
+npm run meta:verify-surfaces -- --run-dir /path/to/repo/.task-runs/<id>
+```
+
+The surface proof executor handles browser and browser-extension smoke artifacts, API request/response proof, direct CLI binary invocation, data/generated-artifact validation, visual artifacts, and manual evidence artifacts. Surface evidence only satisfies proof obligations that explicitly accept that evidence type; manual and visual proof must cite concrete artifact paths.
+
+Run the completed-run verifier after runner and proof artifacts exist:
+
+```bash
+npm run meta:verifier -- --run-dir /path/to/repo/.task-runs/<id>
+```
+
+The verifier writes `verifier-report.json` and rejects invalid run folders, missing artifacts, schema failures, bad run-state/order evidence, requirement/proof/evidence mismatches, failed commands claimed as passed, unaccepted evidence types, forbidden changed files, missing surface evidence, and final-report citations to unknown or non-passing evidence. Findings are classified as `blocking`, `major`, `minor`, or `info`; any blocking or major finding makes the verifier recommendation `reject`.
+
+Run the deterministic policy engine after verification and verifier review:
+
+```bash
+npm run meta:policy -- --run-dir /path/to/repo/.task-runs/<id>
+```
+
+The policy engine writes `policy-decision.json` with `accepted`, `rejected`, or `blocked`. It consumes `verification.json`, `verifier-report.json`, task-class surface policy, optional `corpus-replay.json`, and optional `policy-overrides.json`; reject/block rules remain recorded even when an explicit override is accepted.
 
 To run live Codex CLI evals:
 
@@ -41,6 +135,15 @@ npm run voovo:validate-cases
 ```
 
 See `evals/voovo-pr-replay/README.md` for private VOOVO PR imports and counterfactual replay runs.
+
+To validate the independent acceptance gate:
+
+```bash
+npm run acceptance:test
+npm run acceptance:verify
+```
+
+The acceptance gate rejects runs that claim discipline without artifacts: missing prompt input, edits before inspection, forbidden paths, missing or failed verification, and final reports that cite nonexistent evidence.
 
 ## How To Use In Codex App
 

@@ -1,0 +1,23 @@
+[
+  {
+    "type": "message",
+    "role": "developer",
+    "content": [
+      {
+        "type": "input_text",
+        "text": "Harness rule: inspect before edit, verify after edit, and report only artifact-backed claims."
+      }
+    ]
+  },
+  {
+    "type": "message",
+    "role": "user",
+    "content": [
+      {
+        "type": "input_text",
+        "text": "Fix the CSV parser bug. Done means npm test passes and the final report cites evidence."
+      }
+    ]
+  }
+]
+

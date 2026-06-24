@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvis.local/meta-harness/run-envelope.schema.json",
+  "title": "Meta Harness Run Envelope",
+  "type": "object",
+  "required": ["requiredArtifacts", "requiredDirectories"],
+  "properties": {
+    "requiredArtifacts": {
+      "type": "array",
+      "const": [
+        "task.md",
+        "repo-profile.json",
+        "spec.json",
+        "proof-plan.json",
+        "allowed-files.json",
+        "runner-config.json",
+        "events.jsonl",
+        "command-log.jsonl",
+        "transcript.jsonl",
+        "diff.patch",
+        "changed-files.json",
+        "runner-state.json",
+        "verification.json",
+        "verifier-report.json",
+        "policy-decision.json",
+        "final-report.json"
+      ]
+    },
+    "requiredDirectories": {
+      "type": "array",
+      "const": [
+        "evidence",
+        "html-report"
+      ]
+    }
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvis-2.local/evals/acceptance-gate/final-report.schema.json",
+  "title": "Codex Acceptance Gate Final Report",
+  "type": "object",
+  "required": ["schemaVersion", "caseId", "outcome", "claims", "residualRisk"],
+  "additionalProperties": true,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "caseId": { "type": "string", "minLength": 1 },
+    "outcome": { "enum": ["passed", "failed", "blocked"] },
+    "summary": { "type": "string" },
+    "claims": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["status", "evidence"],
+        "additionalProperties": true,
+        "properties": {
+          "status": { "enum": ["passed", "failed", "blocked", "not-applicable"] },
+          "evidence": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "proofObligations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["status", "evidence"],
+        "additionalProperties": true,
+        "properties": {
+          "status": { "enum": ["passed", "failed", "blocked", "not-applicable"] },
+          "evidence": { "type": "array", "items": { "type": "string" } },
+          "observed": { "type": "string" }
+        }
+      }
+    },
+    "residualRisk": { "type": "array", "items": { "type": "string" } }
+  }
+}

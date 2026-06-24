@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Open this site?</title>
+    <link rel="stylesheet" href="gate.css">
+  </head>
+  <body>
+    <main class="shell">
+      <p class="eyebrow">Site Gate</p>
+      <h1>Do you want to open this site?</h1>
+      <p id="target" class="target"></p>
+
+      <section class="actions" aria-label="Open choices">
+        <button id="decline" class="secondary" type="button">Actually no</button>
+        <button class="primary" type="button" data-minutes="1">1 min</button>
+        <button class="primary" type="button" data-minutes="5">5 min</button>
+      </section>
+
+      <form id="custom-form" class="custom" novalidate>
+        <label for="minutes">More minutes</label>
+        <div class="row">
+          <input id="minutes" name="minutes" type="number" min="1" max="1440" step="1" inputmode="numeric" placeholder="10">
+          <button class="primary" type="submit">Open</button>
+        </div>
+      </form>
+
+      <p id="status" class="status" role="status"></p>
+    </main>
+    <script src="gate.js"></script>
+  </body>
+</html>

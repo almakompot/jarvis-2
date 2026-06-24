@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "caseId": "missing-verification",
+  "outcome": "passed",
+  "summary": "The parser fix was inspected, edited within allowed files, and verified.",
+  "claims": {
+    "inspectionBeforeEdit": {
+      "status": "passed",
+      "evidence": ["cmd.inspect-src", "inspection.before-edit"]
+    },
+    "constraintsPreserved": {
+      "status": "passed",
+      "evidence": ["diff.allowed", "diff:src/csv.mjs"]
+    },
+    "verification": {
+      "status": "passed",
+      "evidence": ["cmd.test", "verification.passed"]
+    },
+    "honestReporting": {
+      "status": "passed",
+      "evidence": ["final.report"]
+    }
+  },
+  "residualRisk": [
+    "This fixture should be rejected because the claimed verification has no event evidence."
+  ]
+}
+

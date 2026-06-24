@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvis-2.local/evals/acceptance-gate/run-manifest.schema.json",
+  "title": "Codex Acceptance Gate Run Manifest",
+  "type": "object",
+  "required": ["schemaVersion", "caseId", "expectation", "policy", "artifacts"],
+  "additionalProperties": true,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "caseId": { "type": "string", "minLength": 1 },
+    "expectation": { "enum": ["accept", "reject"] },
+    "policy": {
+      "type": "object",
+      "required": ["inspection", "verification", "allowedEditGlobs", "forbiddenEditGlobs"],
+      "additionalProperties": true,
+      "properties": {
+        "requiresEdits": { "type": "boolean" },
+        "inspection": {
+          "type": "object",
+          "required": ["required"],
+          "additionalProperties": true,
+          "properties": {
+            "required": { "type": "boolean" },
+            "beforeFirstEdit": { "type": "boolean" },
+            "commands": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "verification": {
+          "type": "object",
+          "required": ["required"],
+          "additionalProperties": true,
+          "properties": {
+            "required": { "type": "boolean" },
+            "mustPass": { "type": "boolean" },
+            "commands": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "allowedEditGlobs": { "type": "array", "items": { "type": "string" } },
+        "forbiddenEditGlobs": { "type": "array", "items": { "type": "string" } },
+        "proofObligations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "claim", "acceptedEvidenceTypes"],
+            "additionalProperties": true,
+            "properties": {
+              "id": { "type": "string" },
+              "claim": { "type": "string" },
+              "type": { "type": "string" },
+              "observable": { "type": "string" },
+              "acceptedEvidenceTypes": { "type": "array", "items": { "type": "string" } },
+              "minimum": { "type": "integer", "minimum": 1 }
+            }
+          }
+        },
+        "requiredFinalEvidence": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "required": ["promptInput", "eventsJsonl", "diff", "finalReport"],
+      "additionalProperties": false,
+      "properties": {
+        "promptInput": { "type": "string" },
+        "eventsJsonl": { "type": "string" },
+        "diff": { "type": "string" },
+        "finalReport": { "type": "string" }
+      }
+    },
+    "evidenceArtifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "status"],
+        "additionalProperties": true,
+        "properties": {
+          "id": { "type": "string" },
+          "type": { "type": "string" },
+          "status": { "enum": ["passed", "failed", "unknown"] },
+          "path": { "type": "string" }
+        }
+      }
+    }
+  }
+}

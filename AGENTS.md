@@ -23,8 +23,12 @@ Before final response:
 
 ## Repository Commands
 
-- `npm run check`: assert the fixture is armed, test the scorer, and score the sample resilient output.
+- `npm run check`: validate doctrine, assert the fixture is armed, test the scorer, run the acceptance gate, run the Site Gate browser smoke, and validate VOOVO replay cases.
+- `npm run meta:check`: test and smoke the M1/M3 task compiler plus `.task-runs/<id>` run envelope.
+- `npm run meta:init -- --repo <repo> --task "<feature request>"`: create a frozen task packet before implementation.
+- `npm run meta:validate -- --run-dir <repo>/.task-runs/<id>`: validate the generated task packet.
 - `npm run test:fixture`: run the shortcut-trap tests directly; this is expected to fail in the source fixture before eval repair.
+- `npm run site-gate:check`: validate and launch-test the Site Gate Chrome extension with a temporary browser profile.
 - `npm run eval:score -- --input <file>`: score a Codex final response.
 - `npm run eval:codex`: run live Codex CLI baseline and resilient evals; this exits nonzero unless Codex runs succeed, copied fixture tests pass, resilient behavior passes, and resilient score beats baseline.
 
