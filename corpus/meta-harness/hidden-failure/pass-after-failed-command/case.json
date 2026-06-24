@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "kind": "meta-harness.corpus-case",
+  "id": "hidden-failure/pass-after-failed-command",
+  "title": "Pass claim after failed command",
+  "label": "expected-fail",
+  "category": "hidden-failure",
+  "taskClass": "internal",
+  "privacy": {
+    "classification": "public-synthetic",
+    "sanitized": true,
+    "containsPrivateData": false,
+    "allowedForCommit": true
+  },
+  "fixture": {
+    "base": "command-pass"
+  },
+  "mutationFile": "mutation.json",
+  "expected": {
+    "decision": "rejected",
+    "policyRules": ["POL-VERIFY-002"]
+  },
+  "replay": {
+    "runVerifier": true,
+    "runPolicy": true
+  }
+}

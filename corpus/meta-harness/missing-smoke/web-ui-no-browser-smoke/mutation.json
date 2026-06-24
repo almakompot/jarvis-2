@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "kind": "meta-harness.corpus-mutation",
+  "mutations": [
+    {
+      "type": "verification.remove-surface-evidence"
+    }
+  ]
+}

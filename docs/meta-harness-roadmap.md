@@ -146,7 +146,7 @@ It should check:
 
 Done means the verifier can reject a plausible-looking Codex completion.
 
-Status: M6 v1 exists in `meta-harness/lib/verifier.mjs` with CLI `npm run meta:verifier`. It writes `verifier-report.json`, rejects invalid or internally inconsistent run folders, checks artifact/schema/state/traceability/command/diff/final-claim evidence, and classifies findings as blocking, major, minor, or info. The adversarial mutation suite now covers deleted evidence, wrong exit codes, missing browser smoke, forbidden `.env` edits, proof timing before edits, unknown evidence citations, missing residual risk, and pass-after-failure claims. Corpus replay and deeper task-class heuristics remain M7/M10 work.
+Status: M6 v1 exists in `meta-harness/lib/verifier.mjs` with CLI `npm run meta:verifier`. It writes `verifier-report.json`, rejects invalid or internally inconsistent run folders, checks artifact/schema/state/traceability/command/diff/final-claim evidence, and classifies findings as blocking, major, minor, or info. The adversarial mutation suite now covers deleted evidence, wrong exit codes, missing browser smoke, forbidden `.env` edits, proof timing before edits, unknown evidence citations, missing residual risk, and pass-after-failure claims. Deeper task-class heuristics remain M10 work.
 
 ## M7: Failure Corpus
 
@@ -166,6 +166,8 @@ Categories:
 Done means every harness improvement is tested against real past failures.
 
 This is what makes the harness serious.
+
+Status: M7 v1 exists in `corpus/meta-harness` with replay CLI `npm run meta:corpus` and private-staging promotion CLI `npm run meta:promote-failure`. The committed corpus format requires case metadata, minimized input, expected policy outcome, mutation file, expected-pass or expected-fail label, and explicit privacy fields. Replay currently proves five known false-pass patterns still reject and one valid command-proof case still accepts. Promotion creates a metadata skeleton from rejected or blocked runs without copying raw artifacts; automatic minimization and sanitization remain future hardening.
 
 ## M8: Product Surface
 
@@ -198,7 +200,7 @@ Examples:
 
 This is where it becomes a harness, not a document.
 
-Status: M9 v1 exists in `meta-harness/lib/policy-engine.mjs` with CLI `npm run meta:policy`. It writes `policy-decision.json`, consumes verification/verifier/task-class/corpus/override inputs, distinguishes accepted/rejected/blocked, records fired rule IDs, supports explicit override records without erasing evidence, and has deterministic recomputation tests. Full report UX and corpus promotion remain M8/M7 work.
+Status: M9 v1 exists in `meta-harness/lib/policy-engine.mjs` with CLI `npm run meta:policy`. It writes `policy-decision.json`, consumes verification/verifier/task-class/corpus/override inputs, distinguishes accepted/rejected/blocked, records fired rule IDs, supports explicit override records without erasing evidence, and has deterministic recomputation tests. Full report UX remains M8 work.
 
 ## M10: Generalization
 

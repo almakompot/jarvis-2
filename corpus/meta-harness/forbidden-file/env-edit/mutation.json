@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "kind": "meta-harness.corpus-mutation",
+  "mutations": [
+    {
+      "type": "changed-files.add-forbidden-env",
+      "path": ".env.local"
+    }
+  ]
+}

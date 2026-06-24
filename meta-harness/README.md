@@ -1,6 +1,6 @@
 # Meta-Harness
 
-This directory contains the bounded M1-M6 plus M9 slice from `docs/meta-harness-roadmap.md`.
+This directory contains the bounded M1-M7 plus M9 slice from `docs/meta-harness-roadmap.md`.
 
 It does three things:
 
@@ -12,9 +12,10 @@ It does three things:
 - M5 Command Proof Executor: run allowed local proof commands, capture stdout/stderr/exit/timing, and update requirement/proof coverage.
 - M5 Surface Proof Executor: record runnable-surface evidence for browser, extension, API, CLI, data, visual, and manual proof obligations.
 - M6 Completed-Run Verifier: independently audit a completed run folder and write severity-classified findings to `verifier-report.json`.
+- M7 Failure Corpus: replay sanitized expected-fail and expected-pass cases against the verifier and policy engine.
 - M9 Policy Engine: convert verification, verifier findings, task-class policy, optional corpus replay, and explicit overrides into `policy-decision.json`.
 
-It does not yet provide the full M8 daily CLI/report UX or M7 corpus promotion workflow.
+It does not yet provide the full M8 daily CLI/report UX or automatic minimization and sanitization for promoted corpus cases.
 
 ## Commands
 
@@ -26,6 +27,8 @@ npm run meta:verify-commands -- --run-dir /path/to/repo/.task-runs/<id>
 npm run meta:verify-surfaces -- --run-dir /path/to/repo/.task-runs/<id>
 npm run meta:verifier -- --run-dir /path/to/repo/.task-runs/<id>
 npm run meta:policy -- --run-dir /path/to/repo/.task-runs/<id>
+npm run meta:corpus
+npm run meta:promote-failure -- --run-dir /path/to/repo/.task-runs/<id> --category missing-smoke --case-id browse-reset
 npm run meta:check
 ```
 
@@ -117,6 +120,21 @@ The verifier audits:
 Findings use `blocking`, `major`, `minor`, or `info`. A run with any blocking or major finding gets `status: failed` and `decisionRecommendation: reject`; otherwise the verifier recommends `accept`.
 
 The adversarial mutation suite in `meta-harness/scripts/verifier-mutations.test.mjs` starts from valid command and browser-smoke runs, then mutates them by deleting evidence, changing exit codes, removing browser smoke, adding `.env` edits, moving proof before edits, citing unknown evidence, removing residual risk, and claiming pass after failed verification.
+
+## M7 Failure Corpus
+
+`corpus/meta-harness` stores committed, sanitized replay cases for known false-pass patterns. Each case has `case.json`, `mutation.json`, `input/task.md`, `expected/policy-decision.json`, and a short README.
+
+Committed cases must be public synthetic or otherwise sanitized:
+
+- `privacy.classification` must be set.
+- `privacy.sanitized` must be `true`.
+- `privacy.containsPrivateData` must be `false`.
+- `privacy.allowedForCommit` must be `true`.
+
+`npm run meta:corpus` builds deterministic fixture runs, applies the case mutation, reruns M6 and M9, and writes `tmp/meta-harness-corpus/replay-summary.json`. The current corpus includes five expected-fail cases for fake verification, missing browser smoke, forbidden `.env` edits, failed verification reported as passed, and proof timing before final edits. It also includes one expected-pass case proving a valid command-proof run is still accepted.
+
+`npm run meta:promote-failure` creates a private-staging skeleton from a rejected or blocked run. It records the source decision and expected rules but does not copy raw run artifacts; promoted cases must be minimized and sanitized before commit.
 
 ## M9 Policy Engine
 

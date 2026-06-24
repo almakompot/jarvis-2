@@ -10,6 +10,7 @@ The repo contains:
 - `docs/fresh-repo-feature-protocol.md`: testing-first doctrine for a fresh context feature request.
 - `docs/meta-harness-roadmap.md`: milestone roadmap for turning the doctrine into a real meta-harness.
 - `meta-harness`: task compiler, run-envelope generator, Codex runner wrapper, proof executors, completed-run verifier, and policy engine.
+- `corpus/meta-harness`: sanitized failure-corpus replay cases for known false-pass patterns.
 - `apps/site-gate-extension`: Chrome extension example with a real browser smoke test.
 - `evals/shortcut-trap`: a tiny bug fixture designed to punish shallow fixes.
 - `evals/acceptance-gate`: an artifact-based independent verifier for disciplined Codex runs.
@@ -73,7 +74,7 @@ npm run meta:check
 
 Current enforcement: required artifacts must exist, requirements must map to proof obligations, proof obligations must map back to known requirements, secret paths must be forbidden, verification cannot claim passed without evidence, and final reports cannot claim passed without passed verification and cited evidence.
 
-Still unenforced: deep repo adapter inference, corpus promotion, and dashboard/report UX.
+Still unenforced: deep repo adapter inference, automatic corpus minimization/sanitization, and dashboard/report UX.
 
 ## Meta-Harness M4/M5
 
@@ -114,6 +115,22 @@ npm run meta:policy -- --run-dir /path/to/repo/.task-runs/<id>
 ```
 
 The policy engine writes `policy-decision.json` with `accepted`, `rejected`, or `blocked`. It consumes `verification.json`, `verifier-report.json`, task-class surface policy, optional `corpus-replay.json`, and optional `policy-overrides.json`; reject/block rules remain recorded even when an explicit override is accepted.
+
+Replay the M7 failure corpus:
+
+```bash
+npm run meta:corpus
+```
+
+The committed corpus contains sanitized synthetic expected-fail and expected-pass cases. Expected-fail cases must continue to reject under the current verifier and policy engine; expected-pass cases prove the harness is still satisfiable.
+
+Promote a rejected or blocked local run into a private-staging corpus skeleton:
+
+```bash
+npm run meta:promote-failure -- --run-dir /path/to/.task-runs/<id> --category missing-smoke --case-id browse-reset
+```
+
+Promotion intentionally does not copy raw run artifacts. Minimize and sanitize the case before committing it.
 
 To run live Codex CLI evals:
 

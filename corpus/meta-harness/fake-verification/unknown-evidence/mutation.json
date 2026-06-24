@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "kind": "meta-harness.corpus-mutation",
+  "mutations": [
+    {
+      "type": "final-report.unknown-evidence",
+      "claimId": "automatedVerification",
+      "evidenceId": "E.fake.missing"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvis.local/meta-harness/corpus-case.schema.json",
+  "title": "Meta Harness Corpus Case",
+  "type": "object",
+  "required": ["schemaVersion", "kind", "id", "title", "label", "category", "privacy", "fixture", "mutationFile", "expected", "replay"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "kind": { "const": "meta-harness.corpus-case" },
+    "id": { "type": "string" },
+    "title": { "type": "string" },
+    "label": { "enum": ["expected-fail", "expected-pass"] },
+    "category": { "type": "string" },
+    "taskClass": { "type": "string" },
+    "privacy": {
+      "type": "object",
+      "required": ["classification", "sanitized", "containsPrivateData", "allowedForCommit"]
+    },
+    "fixture": {
+      "type": "object",
+      "required": ["base"]
+    },
+    "mutationFile": { "type": "string" },
+    "expected": {
+      "type": "object",
+      "required": ["decision", "policyRules"]
+    },
+    "replay": { "type": "object" }
+  }
+}

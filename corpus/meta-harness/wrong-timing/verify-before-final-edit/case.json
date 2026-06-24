@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "kind": "meta-harness.corpus-case",
+  "id": "wrong-timing/verify-before-final-edit",
+  "title": "Verification command ran before final edit",
+  "label": "expected-fail",
+  "category": "wrong-timing",
+  "taskClass": "internal",
+  "privacy": {
+    "classification": "public-synthetic",
+    "sanitized": true,
+    "containsPrivateData": false,
+    "allowedForCommit": true
+  },
+  "fixture": {
+    "base": "command-pass"
+  },
+  "mutationFile": "mutation.json",
+  "expected": {
+    "decision": "rejected",
+    "policyRules": ["POL-ORDER-001"]
+  },
+  "replay": {
+    "runVerifier": true,
+    "runPolicy": true
+  }
+}

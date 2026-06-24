@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "kind": "meta-harness.corpus-case",
+  "id": "expected-pass/command-accepted",
+  "title": "Accepted command proof remains satisfiable",
+  "label": "expected-pass",
+  "category": "expected-pass",
+  "taskClass": "internal",
+  "privacy": {
+    "classification": "public-synthetic",
+    "sanitized": true,
+    "containsPrivateData": false,
+    "allowedForCommit": true
+  },
+  "fixture": {
+    "base": "command-pass"
+  },
+  "mutationFile": "mutation.json",
+  "expected": {
+    "decision": "accepted",
+    "policyRules": []
+  },
+  "replay": {
+    "runVerifier": true,
+    "runPolicy": true
+  }
+}

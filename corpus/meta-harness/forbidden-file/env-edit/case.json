@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "kind": "meta-harness.corpus-case",
+  "id": "forbidden-file/env-edit",
+  "title": "Forbidden environment file edit",
+  "label": "expected-fail",
+  "category": "forbidden-file",
+  "taskClass": "internal",
+  "privacy": {
+    "classification": "public-synthetic",
+    "sanitized": true,
+    "containsPrivateData": false,
+    "allowedForCommit": true
+  },
+  "fixture": {
+    "base": "command-pass"
+  },
+  "mutationFile": "mutation.json",
+  "expected": {
+    "decision": "rejected",
+    "policyRules": ["POL-FILES-001"]
+  },
+  "replay": {
+    "runVerifier": true,
+    "runPolicy": true
+  }
+}

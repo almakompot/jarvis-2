@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "kind": "meta-harness.corpus-case",
+  "id": "missing-smoke/web-ui-no-browser-smoke",
+  "title": "Web UI run missing browser smoke evidence",
+  "label": "expected-fail",
+  "category": "missing-smoke",
+  "taskClass": "web-ui",
+  "privacy": {
+    "classification": "public-synthetic",
+    "sanitized": true,
+    "containsPrivateData": false,
+    "allowedForCommit": true
+  },
+  "fixture": {
+    "base": "browser-pass"
+  },
+  "mutationFile": "mutation.json",
+  "expected": {
+    "decision": "rejected",
+    "policyRules": ["POL-UI-001"]
+  },
+  "replay": {
+    "runVerifier": true,
+    "runPolicy": true
+  }
+}

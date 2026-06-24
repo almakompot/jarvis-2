@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "kind": "meta-harness.corpus-mutation",
+  "mutations": [
+    {
+      "type": "command-log.move-verify-before-edit",
+      "startedAt": "2026-06-24T08:30:00.000Z",
+      "finishedAt": "2026-06-24T08:30:01.000Z"
+    }
+  ]
+}
