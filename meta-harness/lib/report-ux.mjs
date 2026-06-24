@@ -363,15 +363,15 @@ function nextActionsFor({ state, activeRules, missingProof }) {
     return ["Archive the run artifacts and keep residual risk visible in handoff notes."];
   }
   if (state.policyDecision.decision === "blocked") {
-    return ["Resolve the blocking condition, then run `meta verify --run <run-dir>` again."];
+    return ["User/operator: resolve the blocking condition, then run `meta verify --run <run-dir>` again."];
   }
   if (missingProof.length > 0) {
-    return ["Add the missing proof evidence, then run `meta verify --run <run-dir>` again."];
+    return ["Agent/harness repair: add the missing proof evidence, then run `meta verify --run <run-dir>` again."];
   }
   if (activeRules.some((rule) => rule.ruleId === "POL-HONESTY-001" || rule.ruleId === "POL-HONESTY-002")) {
-    return ["Fix the evidence/final-report mismatch, rerun verifier and policy, then rerender the report."];
+    return ["Agent/harness repair: fix the evidence/final-report mismatch, rerun verifier and policy, then rerender the report."];
   }
-  return ["Fix the listed policy findings, then rerun `meta verify --run <run-dir>`."];
+  return ["Agent/harness repair: fix the listed policy findings, then rerun `meta verify --run <run-dir>`."];
 }
 
 function bulletLines(items, emptyText) {

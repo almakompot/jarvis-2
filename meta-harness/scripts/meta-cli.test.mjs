@@ -37,7 +37,7 @@ test("M8 meta report snapshot for a rejected run shows blocking findings first",
   assert.match(output, /^Findings:\n- \[blocking\] POL-HONESTY-001:/);
   assert.match(output, /Decision: rejected/);
   assert.match(output, /Blocking reason: Final report claim automatedVerification cites unknown evidence E\.fake\.missing\./);
-  assert.match(output, /Next action:\n- Fix the evidence\/final-report mismatch/);
+  assert.match(output, /Next action:\n- Agent\/harness repair: fix the evidence\/final-report mismatch/);
 });
 
 test("M8 meta report snapshot for a blocked run shows blocker and next action", async (t) => {
@@ -56,7 +56,7 @@ test("M8 meta report snapshot for a blocked run shows blocker and next action", 
   const output = normalizeReport(result.stdout);
   assert.match(output, /^Findings:\n- \[blocking\] POL-BLOCKED-001: Runner state is blocked\./);
   assert.match(output, /Decision: blocked/);
-  assert.match(output, /Next action:\n- Resolve the blocking condition/);
+  assert.match(output, /Next action:\n- User\/operator: resolve the blocking condition/);
 });
 
 test("M8 meta report gives a useful missing-file CLI error", async (t) => {

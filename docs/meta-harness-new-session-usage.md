@@ -78,10 +78,10 @@ The report is a readable projection. JSON artifacts remain authoritative.
 Do not report completion from memory or assistant prose. Use the policy decision:
 
 - `accepted`: required proof passed, verifier did not find blocking or major issues, and residual risk is recorded.
-- `rejected`: current artifacts do not support the completion claim. Fix the run or start a child run.
-- `blocked`: a real external condition prevents proof, such as missing credentials, unsafe approval boundary, unavailable target environment, or required live access.
+- `rejected`: current artifacts do not support the completion claim. The default next actor is the agent/harness repair loop: fix implementation, proof, or evidence, then rerun verification and policy, or start a child run.
+- `blocked`: a real external condition prevents proof, such as missing credentials, unsafe approval boundary, unavailable target environment, or required live access. This is the user/operator-needed state.
 
-If blocked, name the condition and evidence. Do not use blocked for inconvenience.
+Rejected is repairable by default. Do not notify the user by default unless retries repeat, scope changes, or the safe next action is unclear. Blocked is the state that asks the user/operator for input. If blocked, name the condition and evidence. Do not use blocked for inconvenience.
 
 ## Report Discipline
 

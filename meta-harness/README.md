@@ -214,7 +214,7 @@ npm run meta -- verify --run /path/to/repo/.task-runs/<id>
 npm run meta -- report --run /path/to/repo/.task-runs/<id> --format text
 ```
 
-Do not report completion unless `policy-decision.json` is accepted. Rejected and blocked runs should lead with the blocking reason and next action.
+Do not report completion unless `policy-decision.json` is accepted. Rejected runs should lead with the failed acceptance reason and an agent/harness repair action. Blocked runs should lead with the external condition and the user/operator input needed.
 
 ## Final Report Format
 

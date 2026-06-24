@@ -80,7 +80,9 @@ const docRequirements = [
       "final-report.json",
       "npm run check",
       "git diff --check",
-      "200-500 total runs"
+      "200-500 total runs",
+      "Rejected is repairable by default",
+      "Blocked is the state that asks the user/operator for input"
     ]
   },
   {
@@ -98,7 +100,9 @@ const docRequirements = [
       "Next action:",
       "policy-decision.json",
       "verifier-report.json",
-      "final-report.json"
+      "final-report.json",
+      "For `rejected`, the default actor is the agent/harness repair loop",
+      "For `blocked`, the next actor is the user/operator"
     ]
   },
   {
@@ -116,7 +120,9 @@ const docRequirements = [
       "npm run meta -- run --repo",
       "A/B Evaluation Harness",
       "Final Report Format",
-      "npm run meta:final-audit"
+      "npm run meta:final-audit",
+      "agent/harness repair action",
+      "user/operator input needed"
     ]
   },
   {

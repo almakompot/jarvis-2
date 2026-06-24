@@ -59,7 +59,7 @@ Findings come first so rejected and blocked runs are not buried below useful-loo
 
 `Residual risk` comes from `final-report.json`. Accepted nontrivial runs must keep risk visible.
 
-`Next action` tells the operator what to do next: archive accepted artifacts, resolve a blocker, add missing proof, fix evidence/final-report mismatch, or rerun verification.
+`Next action` names the next actor and action. For `accepted`, archive the artifacts and hand off residual risk. For `rejected`, the default actor is the agent/harness repair loop unless the report says otherwise. For `blocked`, the next actor is the user/operator because an external condition or approval is required.
 
 ## HTML Report
 
@@ -110,7 +110,7 @@ Blocking reason: web-ui tasks require passing runnable-surface evidence.
 Missing proof:
 - P3 pending: Browser smoke proves the requested reset behavior. (browser-smoke)
 Next action:
-- Add the missing proof evidence, then run `meta verify --run <run-dir>` again.
+- Agent/harness repair: add the missing proof evidence, then run `meta verify --run <run-dir>` again.
 ```
 
 ## Blocked Example
@@ -121,7 +121,7 @@ Findings:
 Decision: blocked
 Blocking reason: Runner state is blocked.
 Next action:
-- Resolve the blocking condition, then run `meta verify --run <run-dir>` again.
+- User/operator: resolve the blocking condition, then run `meta verify --run <run-dir>` again.
 ```
 
 ## Final Answer Contract
