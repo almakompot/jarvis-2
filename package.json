@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Codex resilience protocol, skill, and evaluation harness.",
   "scripts": {
-    "check": "npm run doctrine:validate && npm run meta:check && npm run test:fixture:expected-fail && npm run test:scorer && npm run eval:score -- --input docs/sample-resilient-output.md && npm run acceptance:test && npm run acceptance:verify && npm run web-ui:test-replay && npm run browser-extension:test-replay && npm run non-web:test-replay && npm run ab-harness:test && npm run site-gate:check && npm run voovo:test-repairs && npm run voovo:validate-cases",
+    "check": "npm run doctrine:validate && npm run meta:check && npm run test:fixture:expected-fail && npm run test:scorer && npm run eval:score -- --input docs/sample-resilient-output.md && npm run acceptance:test && npm run acceptance:verify && npm run web-ui:test-replay && npm run browser-extension:test-replay && npm run non-web:test-replay && npm run ab-harness:test && npm run meta:final-audit && npm run site-gate:check && npm run voovo:test-repairs && npm run voovo:validate-cases",
     "test:fixture": "node --test evals/shortcut-trap/test/*.test.mjs",
     "test:fixture:expected-fail": "node scripts/assert-fixture-fails.mjs",
     "test:scorer": "node scripts/test-scorer.mjs",
@@ -24,6 +24,7 @@
     "meta:test": "node --test meta-harness/scripts/*.test.mjs",
     "meta:smoke": "node meta-harness/scripts/smoke-init.mjs",
     "meta:check": "npm run meta:test && npm run meta:smoke && npm run meta:corpus",
+    "meta:final-audit": "node meta-harness/scripts/final-audit.mjs",
     "site-gate:validate": "node apps/site-gate-extension/scripts/validate-extension.mjs",
     "site-gate:smoke": "node apps/site-gate-extension/scripts/smoke-cdp.mjs",
     "site-gate:check": "npm run site-gate:validate && npm run site-gate:smoke",

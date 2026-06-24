@@ -33,6 +33,17 @@ try {
     console.log(`Next: meta run --run ${result.runDir}`);
   } else if (command === "run") {
     const parsed = parseRunArgs(args.rest);
+    if (!parsed.runDir) {
+      const initialized = initTaskRun({
+        repoPath: parsed.repo,
+        task: parsed.task,
+        runId: parsed.id,
+        overwrite: parsed.overwrite
+      });
+      parsed.runDir = initialized.runDir;
+      console.log(`Created task run: ${initialized.runDir}`);
+      console.log(`Run id: ${initialized.runId}`);
+    }
     const result = await runMetaCommand(parsed);
     console.log(`Runner status: ${result.status}`);
     console.log(`Run dir: ${result.runDir}`);
@@ -124,6 +135,10 @@ function parseInitArgs(argv) {
 function parseRunArgs(argv) {
   const args = {
     runDir: null,
+    repo: null,
+    task: null,
+    id: null,
+    overwrite: false,
     executable: "codex",
     sandbox: "workspace-write",
     dryRun: false,
@@ -135,6 +150,14 @@ function parseRunArgs(argv) {
     const item = argv[index];
     if (item === "--run" || item === "--run-dir") {
       args.runDir = argv[++index];
+    } else if (item === "--repo") {
+      args.repo = argv[++index];
+    } else if (item === "--task") {
+      args.task = argv[++index];
+    } else if (item === "--id") {
+      args.id = argv[++index];
+    } else if (item === "--overwrite") {
+      args.overwrite = true;
     } else if (item === "--executable") {
       args.executable = argv[++index];
     } else if (item === "--sandbox") {
@@ -151,7 +174,9 @@ function parseRunArgs(argv) {
       throw new Error(`Unknown run argument: ${item}`);
     }
   }
-  requireRun(args.runDir);
+  if (!args.runDir && (!args.repo || !args.task)) {
+    throw new Error("meta run requires either --run or both --repo and --task");
+  }
   return args;
 }
 
@@ -286,6 +311,7 @@ function requireRun(runDir) {
 function printHelp() {
   console.log(`Usage:
   meta init --repo /path/to/repo --task "build X" [--id run-id]
+  meta run --repo /path/to/repo --task "build X" [--id run-id] [--dry-run]
   meta run --run /path/to/.task-runs/<id> [--dry-run]
   meta verify --run /path/to/.task-runs/<id>
   meta report --run /path/to/.task-runs/<id> [--format text|html] [--output path]

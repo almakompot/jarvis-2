@@ -144,6 +144,34 @@ test("M8 meta init, fake run, verify, and promote-failure are wired through the 
   assert.equal(caseJson.privacy.classification, "private-staging");
 });
 
+test("M8 meta run can initialize from repo and task in one command", (t) => {
+  const repo = mkdtempSync(join(tmpdir(), "meta-harness-m8-combined-run-"));
+  t.after(() => rmSync(repo, { recursive: true, force: true }));
+  mkdirSync(join(repo, "scripts"), { recursive: true });
+  writeFileSync(join(repo, "package.json"), `${JSON.stringify({ scripts: { test: "node scripts/pass.mjs" }, type: "module" }, null, 2)}\n`);
+  writeFileSync(join(repo, "scripts", "pass.mjs"), "console.log('combined run proof');\n");
+  writeFileSync(join(repo, "README.md"), "# M8 Combined Run\n");
+
+  const result = runMeta([
+    "run",
+    "--repo",
+    repo,
+    "--task",
+    "build a local internal helper with command proof",
+    "--id",
+    "m8-combined-run",
+    "--fake",
+    "--scenario",
+    "success"
+  ]);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Created task run:/);
+  assert.match(result.stdout, /Runner status: implemented/);
+  assert.match(result.stdout, /Run dir:/);
+  assert.match(readFileSync(join(repo, ".task-runs", "m8-combined-run", "runner-state.json"), "utf8"), /implemented/);
+});
+
 async function createAcceptedCommandRun(runId) {
   const repo = mkdtempSync(join(tmpdir(), "meta-harness-m8-"));
   mkdirSync(join(repo, "scripts"), { recursive: true });

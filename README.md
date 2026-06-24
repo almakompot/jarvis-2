@@ -9,6 +9,8 @@ The repo contains:
 - `prompts/resilience-levels.md`: copyable task contracts.
 - `docs/fresh-repo-feature-protocol.md`: testing-first doctrine for a fresh context feature request.
 - `docs/meta-harness-roadmap.md`: milestone roadmap for turning the doctrine into a real meta-harness.
+- `docs/meta-harness-new-session-usage.md`: operator checklist for using the harness from a fresh Codex session.
+- `docs/meta-harness-final-report-format.md`: final report contract and section order.
 - `meta-harness`: task compiler, run-envelope generator, Codex runner wrapper, proof executors, completed-run verifier, and policy engine.
 - `corpus/meta-harness`: sanitized failure-corpus replay cases for known false-pass patterns.
 - `apps/site-gate-extension`: Chrome extension example with a real browser smoke test.
@@ -17,6 +19,7 @@ The repo contains:
 - `evals/web-ui-replay`: first full meta-harness web UI replay from raw task through policy and report.
 - `evals/browser-extension-replay`: full Site Gate browser-extension replay plus syntax-only false-pass rejection.
 - `evals/non-web-replay`: full data-pipeline replay plus weak generated-artifact rejection.
+- `evals/ab-harness`: deterministic A/B dry-run harness for comparing baseline Codex against meta-harnessed Codex.
 - `evals/voovo-pr-replay`: phase-two counterfactual PR replay benchmark scaffold.
 - `scripts/run-codex-eval.mjs`: runs baseline and resilient Codex CLI attempts.
 - `scripts/score-transcript.mjs`: scores the final Codex messages for resilience markers.
@@ -31,6 +34,8 @@ npm run site-gate:check
 npm run web-ui:replay
 npm run browser-extension:replay
 npm run non-web:replay
+npm run ab-harness:dry-run
+npm run meta:final-audit
 npm run eval:score -- --input docs/sample-resilient-output.md
 npm run acceptance:verify
 ```
@@ -48,6 +53,8 @@ Done means the changed surface was exercised the way a user will try it, and the
 ```
 
 For smaller runs, replace `npm run check` with the narrow command for the touched surface, but only when you name why the narrower proof is enough.
+
+For meta-harness work specifically, use `docs/meta-harness-new-session-usage.md`. The final report contract is `docs/meta-harness-final-report-format.md`.
 
 ## Meta-Harness M1/M3
 
@@ -125,6 +132,7 @@ The policy engine writes `policy-decision.json` with `accepted`, `rejected`, or 
 Use the M8 CLI facade for daily runs:
 
 ```bash
+npm run meta -- run --repo /path/to/repo --task "build the requested feature"
 npm run meta -- init --repo /path/to/repo --task "build the requested feature"
 npm run meta -- run --run /path/to/repo/.task-runs/<id>
 npm run meta -- verify --run /path/to/repo/.task-runs/<id>
@@ -208,6 +216,21 @@ npm run non-web:test-replay
 ```
 
 The replay creates a synthetic Hungarian old-doc OCR fixture, invokes the actual local pipeline CLI, verifies missing-text-layer invalid input, validates generated manifest/searchable-text/search-index artifacts beyond existence, records zero external OCR cost and no approval requirement, then proves weak placeholder artifacts are rejected.
+
+To run the A/B evaluation dry run:
+
+```bash
+npm run ab-harness:dry-run
+npm run ab-harness:test
+```
+
+The committed dry run is small and deterministic. It defines task sets, variants, repeats, scoring, artifact collection, failure classifications, and report output. Use 200-500 total runs only for a later validation campaign, not as implementation steps.
+
+To audit final packaging, docs, scripts, CI wiring, and new-session surfaces:
+
+```bash
+npm run meta:final-audit
+```
 
 ## How To Use In Codex App
 

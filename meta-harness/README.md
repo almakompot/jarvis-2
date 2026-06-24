@@ -21,6 +21,7 @@ It does not yet provide a dashboard or automatic minimization and sanitization f
 ## Commands
 
 ```bash
+npm run meta -- run --repo /path/to/repo --task "build X"
 npm run meta -- init --repo /path/to/repo --task "build X"
 npm run meta -- run --run /path/to/repo/.task-runs/<id> --dry-run
 npm run meta -- verify --run /path/to/repo/.task-runs/<id>
@@ -29,6 +30,7 @@ npm run meta -- report --run /path/to/repo/.task-runs/<id> --format html
 npm run meta -- rerun --from /path/to/repo/.task-runs/<id>
 npm run meta -- promote-failure --run /path/to/repo/.task-runs/<id> --category missing-smoke --case-id browse-reset
 npm run meta -- cleanup --repo /path/to/repo --dry-run
+npm run meta:final-audit
 ```
 
 The older focused scripts remain available for direct component work:
@@ -201,6 +203,63 @@ The accepted run must pass with real `data-fixture` surface evidence. The weak-a
 `npm run meta -- report --run <dir> --format html` writes `html-report/index.html` with evidence links back to run-folder artifacts. JSON files remain authoritative; the report is a readable projection of the current run state.
 
 `meta rerun` creates a child run with `parent-run.json`. `meta cleanup --dry-run` lists only directories under repo-local `.task-runs/` that contain a matching `meta-harness.task-spec`; `--delete` is required before it removes anything.
+
+## New-Session Usage
+
+Use `docs/meta-harness-new-session-usage.md` when a fresh Codex session needs to operate the harness. The short version is:
+
+```bash
+npm run meta -- run --repo /path/to/repo --task "build X"
+npm run meta -- verify --run /path/to/repo/.task-runs/<id>
+npm run meta -- report --run /path/to/repo/.task-runs/<id> --format text
+```
+
+Do not report completion unless `policy-decision.json` is accepted. Rejected and blocked runs should lead with the blocking reason and next action.
+
+## Final Report Format
+
+The report contract is documented in `docs/meta-harness-final-report-format.md`.
+
+Text reports render these sections in order:
+
+```text
+Findings:
+Decision:
+Blocking reason:
+Run:
+Task:
+Policy rules:
+Passed commands:
+Failed commands:
+Missing proof:
+Evidence:
+Residual risk:
+Next action:
+```
+
+`policy-decision.json`, `verification.json`, `verifier-report.json`, and evidence files remain authoritative. The text and HTML reports are projections for humans.
+
+## A/B Evaluation Harness
+
+`evals/ab-harness` compares baseline Codex behavior against meta-harnessed Codex behavior. The committed suite is deterministic and small:
+
+```bash
+npm run ab-harness:dry-run
+npm run ab-harness:test
+```
+
+It defines task sets, harness variants, repeated-run records, scoring rubric, artifact collection, failure classification, and summary reports. The 200-500 run count is validation campaign scale after the harness is stable, not an implementation checklist.
+
+## Final Packaging Audit
+
+`npm run meta:final-audit` verifies that stable scripts, docs, CI wiring, report-format docs, new-session docs, task-class replay docs, and final goal metadata are present. It writes:
+
+```text
+tmp/meta-harness-final-audit/summary.json
+tmp/meta-harness-final-audit/report.md
+```
+
+`npm run check` includes this audit.
 
 ## M9 Policy Engine
 
