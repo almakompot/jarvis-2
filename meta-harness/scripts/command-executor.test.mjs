@@ -109,6 +109,7 @@ test("command executor blocks unsafe package-script commands before execution", 
   });
   assert.equal(safety.allowed, false);
   assert.equal(safety.reason, "unsafe-deploy");
+  assert.equal(safety.approvalRequired, true);
 
   const result = await runCommandProofExecutor({ runDir, timeoutMs: 1000 });
 
@@ -116,8 +117,47 @@ test("command executor blocks unsafe package-script commands before execution", 
   const verification = readJson(join(runDir, "verification.json"));
   assert.equal(verification.commands[0].status, "blocked");
   assert.equal(verification.commands[0].reason, "unsafe-deploy");
+  assert.equal(verification.commands[0].approvalRequired, true);
   assert.equal(readFileSync(join(runDir, "command-log.jsonl"), "utf8"), "");
   assertStructuralValidation(runDir);
+});
+
+test("command guard blocks live mutation, send, migration, and cost-bearing proof commands", () => {
+  const cases = [
+    ["git push origin main", "unsafe-git-push"],
+    ["gh release create v1.2.3", "unsafe-release"],
+    ["vercel --prod", "unsafe-deploy"],
+    ["supabase functions deploy api", "unsafe-deploy"],
+    ["kubectl apply -f deploy.yaml", "unsafe-live-mutation"],
+    ["docker push registry.example.com/app:latest", "unsafe-live-mutation"],
+    ["npm publish", "unsafe-publish"],
+    ["node scripts/send-email.mjs", "unsafe-send"],
+    ["curl -X POST https://discord.com/api/webhooks/abc", "unsafe-webhook-send"],
+    ["prisma migrate deploy", "unsafe-migration"],
+    ["OPENAI_API_KEY=sk-test node scripts/generate.mjs", "unsafe-external-api-cost"],
+    ["aws bedrock invoke-model --model-id fixture", "unsafe-external-api-cost"]
+  ];
+
+  for (const [command, reason] of cases) {
+    const safety = classifyCommandSafety({ command, repoProfile: {} });
+    assert.equal(safety.allowed, false, command);
+    assert.equal(safety.reason, reason, command);
+    assert.equal(safety.approvalRequired, true, command);
+  }
+
+  const packageScriptSafety = classifyCommandSafety({
+    command: "npm run spend",
+    repoProfile: {
+      package: {
+        scripts: {
+          spend: "OPENAI_API_KEY=sk-test node scripts/generate.mjs"
+        }
+      }
+    }
+  });
+  assert.equal(packageScriptSafety.allowed, false);
+  assert.equal(packageScriptSafety.reason, "unsafe-external-api-cost");
+  assert.equal(packageScriptSafety.approvalRequired, true);
 });
 
 test("command executor reruns append evidence and let later passing proof supersede failure", async (t) => {

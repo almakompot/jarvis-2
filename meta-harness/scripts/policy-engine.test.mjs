@@ -178,6 +178,14 @@ test("M9 policy engine records explicit overrides without erasing failed evidenc
   assert.ok(riskRules.length > 0, "risk rules must remain recorded");
   assert.ok(riskRules.every((rule) => rule.overridden), "risk rules must be explicitly overridden");
   assert.equal(result.overrides.length, 1);
+  const policyDecision = readJson(join(runDir, "policy-decision.json"));
+  assert.equal(policyDecision.approvalEvents.length, 1);
+  assert.equal(policyDecision.approvalEvents[0].type, "approval-event");
+  assert.equal(policyDecision.approvalEvents[0].status, "applied");
+  assert.equal(policyDecision.approvalEvents[0].overrideId, "override.risk.1");
+  assert.equal(policyDecision.approvalEvents[0].remainingRisk, "Residual risk omission remains visible in policy-decision.json.");
+  const approvalEvents = readJsonl(join(runDir, "events.jsonl")).filter((event) => event.type === "approval-event");
+  assert.ok(approvalEvents.some((event) => event.overrideId === "override.risk.1" && event.status === "applied"));
 });
 
 test("M9 policy recomputation is deterministic for the same inputs", async (t) => {
@@ -399,6 +407,10 @@ function policyNow() {
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"));
+}
+
+function readJsonl(path) {
+  return readFileSync(path, "utf8").trim().split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line));
 }
 
 function writeJson(path, value) {

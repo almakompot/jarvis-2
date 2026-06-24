@@ -163,16 +163,58 @@ export function promoteFailureRun({
     kind: "meta-harness.corpus-mutation",
     mutations: []
   });
+  writeJson(join(caseDir, "sanitization-report.json"), buildPromotionSanitizationReport({
+    corpusCase,
+    policyDecision,
+    now
+  }));
   writeJson(join(caseDir, "expected", "policy-decision.json"), {
     decision: policyDecision.decision,
     policyRules: [...new Set(expectedRules)]
   });
-  writeFileSync(join(caseDir, "input", "task.md"), `${spec.task?.raw || "(task unavailable)"}\n`);
+  writeFileSync(join(caseDir, "input", "task.md"), renderPromotedTaskPlaceholder({ policyDecision }));
   writeFileSync(join(caseDir, "run", "README.md"), "Original run artifacts are intentionally not copied. Add a minimized sanitized run fixture here if needed.\n");
   writeFileSync(join(caseDir, "README.md"), renderPromotedReadme({ corpusCase, policyDecision, verifierReport }));
   return {
     caseDir,
     corpusCase
+  };
+}
+
+function buildPromotionSanitizationReport({ corpusCase, policyDecision, now }) {
+  return {
+    schemaVersion: 1,
+    kind: "meta-harness.corpus-sanitization-report",
+    caseId: corpusCase.id,
+    sourceRunId: policyDecision.runId,
+    createdAt: now.toISOString(),
+    rawArtifactsCopied: false,
+    rawTaskCopied: false,
+    sourceEvidenceCopied: false,
+    copiedArtifacts: [
+      "case.json",
+      "mutation.json",
+      "expected/policy-decision.json",
+      "input/task.md",
+      "run/README.md",
+      "README.md"
+    ],
+    omittedSourceArtifacts: [
+      "task.md",
+      "repo-profile.json",
+      "events.jsonl",
+      "command-log.jsonl",
+      "transcript.jsonl",
+      "diff.patch",
+      "changed-files.json",
+      "runner-state.json",
+      "verification.json",
+      "verifier-report.json",
+      "policy-decision.json",
+      "final-report.json",
+      "evidence/**"
+    ],
+    note: "Promotion creates a metadata-only private staging case. Reconstruct a minimized synthetic fixture before marking it sanitized or committing it."
   };
 }
 
@@ -496,6 +538,14 @@ function safePathPart(value) {
     .replace(/^-+|-+$/g, "");
 }
 
+function renderPromotedTaskPlaceholder({ policyDecision }) {
+  return `# Promoted Task Placeholder
+
+Source run ${policyDecision.runId} was promoted without copying the original task text.
+Create a minimized synthetic task before marking this corpus case sanitized.
+`;
+}
+
 function renderPromotedReadme({ corpusCase, policyDecision, verifierReport }) {
   return `# ${corpusCase.title}
 
@@ -508,11 +558,11 @@ This is a promoted failure-corpus intake skeleton.
 
 ## Active Policy Rules
 
-${(policyDecision.blockingRules || []).filter((rule) => !rule.overridden).map((rule) => `- ${rule.ruleId}: ${rule.message}`).join("\n") || "- none"}
+${(policyDecision.blockingRules || []).filter((rule) => !rule.overridden).map((rule) => `- ${rule.ruleId}`).join("\n") || "- none"}
 
 ## Verifier Findings
 
-${(verifierReport.findings || []).map((finding) => `- ${finding.ruleId}: ${finding.message}`).join("\n") || "- none"}
+${(verifierReport.findings || []).map((finding) => `- ${finding.ruleId}`).join("\n") || "- none"}
 
 ## Next Step
 

@@ -24,6 +24,21 @@ const commandEvidenceTypes = new Set([
   "data-fixture"
 ]);
 
+const approvalRequiredReasons = new Set([
+  "unsafe-git-push",
+  "unsafe-pr-create",
+  "unsafe-release",
+  "unsafe-deploy",
+  "unsafe-live-mutation",
+  "unsafe-publish",
+  "unsafe-send",
+  "unsafe-webhook-send",
+  "unsafe-live-stripe",
+  "unsafe-migration",
+  "unsafe-production-seed",
+  "unsafe-external-api-cost"
+]);
+
 export async function runCommandProofExecutor({
   runDir,
   now = new Date(),
@@ -183,7 +198,8 @@ export function classifyCommandSafety({ command, repoProfile = {} }) {
         return {
           allowed: false,
           reason: rawUnsafe.reason,
-          message: `Package script ${scriptName} is unsafe: ${rawUnsafe.message}`
+          message: `Package script ${scriptName} is unsafe: ${rawUnsafe.message}`,
+          approvalRequired: rawUnsafe.approvalRequired
         };
       }
     }
@@ -195,13 +211,17 @@ function unsafeReason(command) {
   const checks = [
     { id: "unsafe-git-push", pattern: /\bgit\s+push\b/i, message: "git push requires explicit approval." },
     { id: "unsafe-pr-create", pattern: /\bgh\s+pr\s+create\b/i, message: "PR creation requires explicit approval." },
-    { id: "unsafe-deploy", pattern: /\b(?:vercel|firebase|netlify)\s+deploy\b/i, message: "Deployment commands are not allowed as proof commands." },
-    { id: "unsafe-publish", pattern: /\b(?:npm|pnpm|yarn|bun)\s+publish\b/i, message: "Package publish commands are not allowed as proof commands." },
-    { id: "unsafe-send", pattern: /\b(?:send(email)?|mail|slack|post-to-slack)\b/i, message: "Message sending commands require explicit approval." },
+    { id: "unsafe-release", pattern: /\bgh\s+release\s+create\b/i, message: "Release creation requires explicit approval." },
+    { id: "unsafe-deploy", pattern: /\b(?:firebase|netlify|wrangler|fly)\s+deploy\b|\bcloudflare\s+(?:pages\s+)?deploy\b|\brailway\s+up\b|\bgcloud\s+run\s+deploy\b|\bsupabase\s+functions\s+deploy\b|\bvercel\b(?=[^;&|\n]*(?:\bdeploy\b|--prod\b))/i, message: "Deployment commands are not allowed as proof commands." },
+    { id: "unsafe-live-mutation", pattern: /\b(?:kubectl\s+(?:apply|delete|patch|scale|rollout)|terraform\s+(?:apply|destroy)|docker\s+push|aws\s+cloudformation\s+deploy|serverless\s+deploy)\b/i, message: "Live infrastructure mutation commands require explicit approval." },
+    { id: "unsafe-publish", pattern: /\b(?:npm|pnpm|yarn|bun)\s+publish\b|\bchrome-webstore-upload\s+upload\b/i, message: "Package publish commands are not allowed as proof commands." },
+    { id: "unsafe-webhook-send", pattern: /\b(?:curl|wget|http)\b[^\n]*(?:hooks\.slack\.com|discord\.com\/api\/webhooks|api\.telegram\.org\/bot)/i, message: "Webhook sending commands require explicit approval." },
+    { id: "unsafe-send", pattern: /\b(?:send(?:email)?|mail|slack|post-to-slack|resend|twilio|nodemailer)\b/i, message: "Message sending commands require explicit approval." },
     { id: "unsafe-live-stripe", pattern: /\bstripe\b.*\blive\b|\blive\b.*\bstripe\b/i, message: "Live payment commands are not allowed as proof commands." },
-    { id: "unsafe-migration", pattern: /\b(?:migrate|migration|db\s+push|supabase\s+db\s+push|prisma\s+migrate\s+deploy)\b/i, message: "Migration commands require explicit approval." },
+    { id: "unsafe-migration", pattern: /\b(?:migrate|migration|db\s+push|supabase\s+db\s+push|prisma\s+(?:migrate\s+deploy|db\s+push)|drizzle-kit\s+(?:push|migrate)|knex\s+migrate)\b/i, message: "Migration commands require explicit approval." },
     { id: "unsafe-production-seed", pattern: /\b(?:seed:prod|prod:seed|production\s+seed)\b/i, message: "Production seed commands require explicit approval." },
-    { id: "unsafe-env-read", pattern: /\b(?:cat|grep|rg|sed|awk|head|tail|less|more)\b[^;&|]*\.env(?:\s|$|[.*])/i, message: "Commands must not read secret env files." },
+    { id: "unsafe-external-api-cost", pattern: /(^|[;&|]\s*)(?:(?:npx|bunx)\s+|pnpm\s+dlx\s+|npm\s+exec\s+)?(?:openai|anthropic|replicate|elevenlabs|deepgram|assemblyai)\b|\b(?:OPENAI_API_KEY|ANTHROPIC_API_KEY|REPLICATE_API_TOKEN|ELEVENLABS_API_KEY|DEEPGRAM_API_KEY|ASSEMBLYAI_API_KEY)\s*=|\baws\s+(?:bedrock|textract|rekognition|comprehend|sagemaker)\b|\bgcloud\s+(?:ai|ml|vision)\b|\bazure\s+(?:ai|cognitiveservices)\b/i, message: "Cost-bearing external API commands require explicit approval." },
+    { id: "unsafe-env-read", pattern: /\b(?:cat|grep|rg|sed|awk|head|tail|less|more)\b[^;&|]*\.env(?:\s|$|[.*])|\b(?:node|python|ruby|perl)\b[^;&|]*(?:readFileSync|open|File\.read)[^;&|]*\.env(?:\s|$|[.*])/i, message: "Commands must not read secret env files." },
     { id: "unsafe-env-dump", pattern: /(^|[;&|]\s*)(?:env|printenv)(\s|$)/i, message: "Environment dumps are not allowed as proof commands." },
     { id: "unsafe-root-delete", pattern: /\brm\s+-rf\s+\/(?:\s|$)/i, message: "Destructive root deletion is never allowed." }
   ];
@@ -212,8 +232,13 @@ function unsafeReason(command) {
   return {
     allowed: false,
     reason: match.id,
-    message: match.message
+    message: match.message,
+    approvalRequired: approvalRequiredForReason(match.id)
   };
+}
+
+function approvalRequiredForReason(reason) {
+  return approvalRequiredReasons.has(reason);
 }
 
 function packageScriptName(command) {
@@ -413,6 +438,7 @@ function blockedCommandResult({ state, testCase, mapping, reason, message }) {
     timedOut: false,
     reason,
     message,
+    approvalRequired: approvalRequiredForReason(reason),
     requirementIds: testCase.requirementIds,
     proofObligationIds: mapping.proofObligationIds,
     evidenceIds: [evidenceId]
@@ -428,6 +454,7 @@ function blockedCommandResult({ state, testCase, mapping, reason, message }) {
     timedOut: false,
     reason,
     message,
+    approvalRequired: approvalRequiredForReason(reason),
     requirementIds: testCase.requirementIds,
     proofObligationIds: mapping.proofObligationIds
   };

@@ -81,7 +81,10 @@ export function runPolicyEngine({ runDir, now = new Date(), corpusReplay = null,
 
   const decision = buildPolicyDecision(state);
   writeJson(join(absoluteRunDir, "policy-decision.json"), decision);
-  appendJsonl(join(absoluteRunDir, "events.jsonl"), [policyEvent({ state, decision })]);
+  appendJsonl(join(absoluteRunDir, "events.jsonl"), [
+    ...decision.approvalEvents,
+    policyEvent({ state, decision })
+  ]);
   return {
     runId,
     runDir: absoluteRunDir,
@@ -455,6 +458,10 @@ function evaluateBlockedRules(state) {
 function applyOverrides(state) {
   for (const override of state.overrides) {
     const valid = override.ruleId && override.user && override.timestamp && override.reason && override.remainingRisk;
+    override.valid = Boolean(valid);
+    override.appliedRuleIds = [];
+    override.deniedRuleIds = [];
+    override.unmatched = false;
     if (!valid) {
       state.warnings.push({
         id: `override.invalid.${override.id}`,
@@ -466,8 +473,15 @@ function applyOverrides(state) {
       });
       continue;
     }
-    for (const rule of state.rules.filter((rule) => rule.ruleId === override.ruleId)) {
+    const matchingRules = state.rules.filter((rule) => rule.ruleId === override.ruleId);
+    if (matchingRules.length === 0) {
+      override.unmatched = true;
+    }
+    for (const rule of matchingRules) {
       if (nonOverrideableRules.has(rule.ruleId)) {
+        if (!override.deniedRuleIds.includes(rule.ruleId)) {
+          override.deniedRuleIds.push(rule.ruleId);
+        }
         state.warnings.push({
           id: `override.denied.${override.id}`,
           ruleId: "POL-OVERRIDE-DENIED",
@@ -480,6 +494,9 @@ function applyOverrides(state) {
       }
       rule.overridden = true;
       rule.overrideIds.push(override.id);
+      if (!override.appliedRuleIds.includes(rule.ruleId)) {
+        override.appliedRuleIds.push(rule.ruleId);
+      }
     }
   }
 }
@@ -516,6 +533,7 @@ function buildPolicyDecision(state) {
     id: `PD${index + 1}`,
     ...rule
   }));
+  const approvalEvents = buildApprovalEvents(state);
   const activeRules = rules.filter((rule) => !rule.overridden);
   const activeRejects = activeRules.filter((rule) => rule.decision === "reject");
   const activeBlocks = activeRules.filter((rule) => rule.decision === "block");
@@ -531,6 +549,7 @@ function buildPolicyDecision(state) {
     blockingRules: rules,
     warnings: state.warnings,
     overrides: state.overrides,
+    approvalEvents,
     taskClassPolicy: state.taskClassPolicy,
     inputs: {
       requiredArtifacts,
@@ -551,6 +570,29 @@ function buildPolicyDecision(state) {
       deterministic: true
     }
   };
+}
+
+function buildApprovalEvents(state) {
+  return state.overrides
+    .filter((override) => override.valid)
+    .map((override, index) => ({
+      id: `event.approval.${Date.parse(state.createdAt)}.${index + 1}`,
+      type: "approval-event",
+      phase: "approval",
+      status: override.appliedRuleIds.length > 0 ? "applied" : override.deniedRuleIds.length > 0 ? "denied" : "recorded",
+      timestamp: override.timestamp,
+      recordedAt: state.createdAt,
+      artifact: override.source,
+      overrideId: override.id,
+      ruleId: override.ruleId,
+      user: override.user,
+      reason: override.reason,
+      remainingRisk: override.remainingRisk,
+      appliedRuleIds: override.appliedRuleIds,
+      deniedRuleIds: override.deniedRuleIds,
+      unmatched: override.unmatched,
+      message: `Explicit approval ${override.id} recorded for ${override.ruleId}.`
+    }));
 }
 
 function decisionReason({ decision, activeRejects, activeBlocks }) {
