@@ -3,6 +3,7 @@ import { basename, join, resolve } from "node:path";
 
 import {
   appendJsonl,
+  nextAppendDate,
   readJson,
   writeJson
 } from "./runner-utils.mjs";
@@ -46,6 +47,7 @@ export function harvestRunnerEvidence({ runDir, now = new Date() } = {}) {
   const commandLog = readJsonl(join(absoluteRunDir, "command-log.jsonl"));
   const runId = spec.runId || proofPlan.runId || basename(absoluteRunDir);
   const createdAt = now.toISOString();
+  const eventCreatedAt = nextAppendDate(join(absoluteRunDir, "events.jsonl"), now).toISOString();
   const base = stripGeneratedMissingProof(previous);
   const state = {
     runDir: absoluteRunDir,
@@ -122,11 +124,11 @@ export function harvestRunnerEvidence({ runDir, now = new Date() } = {}) {
   }
 
   appendJsonl(join(absoluteRunDir, "events.jsonl"), [{
-    id: `event.runner-evidence.${Date.parse(createdAt)}`,
+    id: `event.runner-evidence.${Date.parse(eventCreatedAt)}`,
     type: "verification-event",
     phase: "verify",
     status: verification.status,
-    timestamp: createdAt,
+    timestamp: eventCreatedAt,
     artifact: "verification.json",
     message: `Runner evidence harvester added ${evidence.length} evidence item(s).`
   }]);

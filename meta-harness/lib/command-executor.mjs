@@ -4,6 +4,7 @@ import { basename, join, resolve } from "node:path";
 
 import {
   appendJsonl,
+  nextAppendDate,
   readJson,
   relativeArtifact,
   writeJson
@@ -54,11 +55,13 @@ export async function runCommandProofExecutor({
   const runId = spec.runId || proofPlan.runId || basename(absoluteRunDir);
   const repoPath = repoProfile.targetPath || repoProfile.repoPath;
   const createdAt = now.toISOString();
+  const eventCreatedAt = nextAppendDate(join(absoluteRunDir, "events.jsonl"), now).toISOString();
   const state = {
     runId,
     runDir: absoluteRunDir,
     repoPath,
     createdAt,
+    eventCreatedAt,
     timestampIndex: 0,
     commandIndex: nextCommandIndex(existingVerification),
     evidenceIndex: nextEvidenceIndex(existingVerification),
@@ -608,7 +611,7 @@ function verificationEvent({ state, status, message }) {
 }
 
 function nextTimestamp(state) {
-  const base = Date.parse(state.createdAt);
+  const base = Date.parse(state.eventCreatedAt || state.createdAt);
   const value = new Date(base + state.timestampIndex).toISOString();
   state.timestampIndex += 1;
   return value;

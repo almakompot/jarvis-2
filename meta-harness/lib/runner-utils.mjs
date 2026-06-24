@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import {
+  existsSync,
   mkdirSync,
   readFileSync,
   readdirSync,
@@ -104,6 +105,27 @@ export function appendJsonl(path, entries) {
     return;
   }
   writeFileSync(path, `${entries.map((entry) => JSON.stringify(entry)).join("\n")}\n`, { flag: "a" });
+}
+
+export function readJsonl(path) {
+  if (!existsSync(path)) {
+    return [];
+  }
+  const text = readFileSync(path, "utf8").trim();
+  if (!text) {
+    return [];
+  }
+  return text.split(/\r?\n/).map((line) => JSON.parse(line));
+}
+
+export function nextAppendDate(jsonlPath, now = new Date()) {
+  const requested = now instanceof Date ? now.getTime() : Date.parse(now);
+  const maxExisting = readJsonl(jsonlPath).reduce((max, row) => {
+    const timestamp = row.timestamp || row.startedAt || row.finishedAt;
+    const value = Date.parse(timestamp);
+    return Number.isNaN(value) ? max : Math.max(max, value);
+  }, Number.NEGATIVE_INFINITY);
+  return new Date(Math.max(requested, maxExisting + 1));
 }
 
 export function readJson(path) {

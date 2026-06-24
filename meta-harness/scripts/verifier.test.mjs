@@ -46,6 +46,56 @@ test("M6 verifier rejects edits before inspection evidence", async (t) => {
   assertFinding(result, "event.edit-before-inspection", "blocking");
 });
 
+test("M6 verifier tolerates legacy repeated verification event batches", async (t) => {
+  const { repo, runDir } = await createCompletedVerifierRun("verifier-legacy-verification-events");
+  t.after(() => rmSync(repo, { recursive: true, force: true }));
+  writeFileSync(join(runDir, "events.jsonl"), [
+    JSON.stringify({
+      id: "event.verification.legacy.2",
+      type: "verification-event",
+      phase: "verify",
+      status: "blocked",
+      timestamp: "2026-06-24T11:00:00.020Z"
+    }),
+    JSON.stringify({
+      id: "event.verification.legacy.1",
+      type: "verification-event",
+      phase: "verify",
+      status: "blocked",
+      timestamp: "2026-06-24T11:00:00.010Z"
+    })
+  ].join("\n") + "\n", { flag: "a" });
+
+  const result = runCompletedRunVerifier({ runDir, now: new Date("2026-06-24T12:00:00.000Z") });
+
+  assert.equal(result.findings.some((finding) => finding.ruleId === "event.timestamp.nonmonotonic"), false);
+});
+
+test("M6 verifier still rejects nonmonotonic runner evidence events", async (t) => {
+  const { repo, runDir } = await createCompletedVerifierRun("verifier-runner-event-order");
+  t.after(() => rmSync(repo, { recursive: true, force: true }));
+  writeFileSync(join(runDir, "events.jsonl"), [
+    JSON.stringify({
+      id: "event.runner-order.2",
+      type: "runner-event",
+      phase: "run",
+      status: "captured",
+      timestamp: "2026-06-24T11:00:00.020Z"
+    }),
+    JSON.stringify({
+      id: "event.runner-order.1",
+      type: "runner-event",
+      phase: "run",
+      status: "captured",
+      timestamp: "2026-06-24T11:00:00.010Z"
+    })
+  ].join("\n") + "\n", { flag: "a" });
+
+  const result = runCompletedRunVerifier({ runDir, now: new Date("2026-06-24T12:00:00.000Z") });
+
+  assertFinding(result, "event.timestamp.nonmonotonic", "blocking");
+});
+
 test("M6 verifier rejects command exits that contradict passed status", async (t) => {
   const { repo, runDir } = await createCompletedVerifierRun("verifier-command-exit");
   t.after(() => rmSync(repo, { recursive: true, force: true }));

@@ -12,6 +12,7 @@ import { basename, dirname, isAbsolute, join, relative, resolve } from "node:pat
 import { classifyCommandSafety } from "./command-executor.mjs";
 import {
   appendJsonl,
+  nextAppendDate,
   readJson,
   relativeArtifact,
   writeJson
@@ -47,11 +48,13 @@ export async function runSurfaceProofExecutor({
   const runId = spec.runId || proofPlan.runId || basename(absoluteRunDir);
   const repoPath = repoProfile.targetPath || repoProfile.repoPath;
   const createdAt = now.toISOString();
+  const eventCreatedAt = nextAppendDate(join(absoluteRunDir, "events.jsonl"), now).toISOString();
   const state = {
     runId,
     runDir: absoluteRunDir,
     repoPath,
     createdAt,
+    eventCreatedAt,
     timestampIndex: 0,
     surfaceIndex: nextSurfaceIndex(existingVerification),
     evidenceIndex: nextSurfaceEvidenceIndex(existingVerification),
@@ -1234,7 +1237,7 @@ function surfaceEvent({ state, status, message }) {
 }
 
 function nextTimestamp(state) {
-  const base = Date.parse(state.createdAt);
+  const base = Date.parse(state.eventCreatedAt || state.createdAt);
   const value = new Date(base + state.timestampIndex).toISOString();
   state.timestampIndex += 1;
   return value;

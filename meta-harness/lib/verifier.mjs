@@ -9,6 +9,7 @@ import { requiredArtifacts, validateTaskRunDir } from "./task-packet.mjs";
 import {
   appendJsonl,
   isForbiddenPath,
+  nextAppendDate,
   normalizeRelativePath,
   readJson,
   writeJson
@@ -28,11 +29,12 @@ export function runCompletedRunVerifier({ runDir, now = new Date() }) {
     throw new Error(`Run directory does not exist: ${absoluteRunDir}`);
   }
   const createdAt = now.toISOString();
+  const eventCreatedAt = nextAppendDate(join(absoluteRunDir, "events.jsonl"), now).toISOString();
   const findings = [];
   const validation = validateTaskRunDir(absoluteRunDir);
   const artifacts = readArtifacts(absoluteRunDir, findings);
   const runId = artifacts.runId || validation.runId || basename(absoluteRunDir);
-  const state = createVerifierState({ runId, runDir: absoluteRunDir, createdAt, findings, artifacts });
+  const state = createVerifierState({ runId, runDir: absoluteRunDir, createdAt, eventCreatedAt, findings, artifacts });
 
   addStructuralFindings({ state, validation });
   verifyTraceability({ state });
@@ -59,11 +61,12 @@ export function runCompletedRunVerifier({ runDir, now = new Date() }) {
   };
 }
 
-function createVerifierState({ runId, runDir, createdAt, findings, artifacts }) {
+function createVerifierState({ runId, runDir, createdAt, eventCreatedAt, findings, artifacts }) {
   return {
     runId,
     runDir,
     createdAt,
+    eventCreatedAt,
     findings,
     artifacts,
     findingIndex: 0
@@ -752,11 +755,11 @@ function buildCoverage({ state }) {
 
 function verifierEvent({ state, report }) {
   return {
-    id: `event.verifier.${Date.parse(state.createdAt)}`,
+    id: `event.verifier.${Date.parse(state.eventCreatedAt || state.createdAt)}`,
     type: "verifier-event",
     phase: "review",
     status: report.status,
-    timestamp: state.createdAt,
+    timestamp: state.eventCreatedAt || state.createdAt,
     artifact: "verifier-report.json",
     message: `M6 verifier wrote ${report.findings.length} finding(s) with recommendation ${report.decisionRecommendation}.`
   };
@@ -872,7 +875,7 @@ function assertMonotonicTimestamps({ state, rows, artifact, severity }) {
       });
       continue;
     }
-    if (previous !== null && value < previous && row.source !== "codex-cli-process") {
+    if (previous !== null && value < previous && !canSkipMonotonicRow({ row, artifact })) {
       addFinding(state, {
         severity,
         ruleId: "event.timestamp.nonmonotonic",
@@ -881,10 +884,21 @@ function assertMonotonicTimestamps({ state, rows, artifact, severity }) {
       });
       return;
     }
-    if (row.source !== "codex-cli-process") {
+    if (!canSkipMonotonicRow({ row, artifact })) {
       previous = value;
     }
   }
+}
+
+function canSkipMonotonicRow({ row, artifact }) {
+  if (row.source === "codex-cli-process") {
+    return true;
+  }
+  if (artifact !== "events.jsonl") {
+    return false;
+  }
+  return ["verification-event", "verifier-event", "policy-event"].includes(row.type)
+    || ["verify", "review", "policy"].includes(row.phase);
 }
 
 function firstByTimestamp(rows) {

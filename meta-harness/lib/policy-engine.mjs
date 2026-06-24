@@ -5,6 +5,7 @@ import { requiredArtifacts, validateTaskRunDir } from "./task-packet.mjs";
 import {
   appendJsonl,
   isForbiddenPath,
+  nextAppendDate,
   readJson,
   writeJson
 } from "./runner-utils.mjs";
@@ -42,6 +43,7 @@ export function runPolicyEngine({ runDir, now = new Date(), corpusReplay = null,
   }
 
   const createdAt = now.toISOString();
+  const eventCreatedAt = nextAppendDate(join(absoluteRunDir, "events.jsonl"), now).toISOString();
   const validation = validateTaskRunDir(absoluteRunDir);
   const artifacts = readPolicyArtifacts(absoluteRunDir);
   const runId = artifacts.spec?.runId
@@ -61,6 +63,7 @@ export function runPolicyEngine({ runDir, now = new Date(), corpusReplay = null,
     runId,
     runDir: absoluteRunDir,
     createdAt,
+    eventCreatedAt,
     validation,
     artifacts,
     corpusReplay: resolvedCorpusReplay,
@@ -614,11 +617,11 @@ function missingArtifactNames(state) {
 
 function policyEvent({ state, decision }) {
   return {
-    id: `event.policy.${Date.parse(state.createdAt)}`,
+    id: `event.policy.${Date.parse(state.eventCreatedAt || state.createdAt)}`,
     type: "policy-event",
     phase: "policy",
     status: decision.decision,
-    timestamp: state.createdAt,
+    timestamp: state.eventCreatedAt || state.createdAt,
     artifact: "policy-decision.json",
     message: `M9 policy engine decided ${decision.decision} with ${decision.summary.activeRejectRules} reject rule(s) and ${decision.summary.activeBlockRules} block rule(s).`
   };
