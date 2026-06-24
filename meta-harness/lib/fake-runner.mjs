@@ -20,6 +20,7 @@ import {
 
 export const fakeRunnerScenarios = [
   "success",
+  "web-ui-success",
   "failed-command",
   "edit-before-inspection",
   "forbidden-edit",

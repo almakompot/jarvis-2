@@ -14,6 +14,7 @@ The repo contains:
 - `apps/site-gate-extension`: Chrome extension example with a real browser smoke test.
 - `evals/shortcut-trap`: a tiny bug fixture designed to punish shallow fixes.
 - `evals/acceptance-gate`: an artifact-based independent verifier for disciplined Codex runs.
+- `evals/web-ui-replay`: first full meta-harness web UI replay from raw task through policy and report.
 - `evals/voovo-pr-replay`: phase-two counterfactual PR replay benchmark scaffold.
 - `scripts/run-codex-eval.mjs`: runs baseline and resilient Codex CLI attempts.
 - `scripts/score-transcript.mjs`: scores the final Codex messages for resilience markers.
@@ -25,6 +26,7 @@ npm run check
 npm run meta:check
 npm run doctrine:validate
 npm run site-gate:check
+npm run web-ui:replay
 npm run eval:score -- --input docs/sample-resilient-output.md
 npm run acceptance:verify
 ```
@@ -175,6 +177,15 @@ npm run acceptance:verify
 ```
 
 The acceptance gate rejects runs that claim discipline without artifacts: missing prompt input, edits before inspection, forbidden paths, missing or failed verification, and final reports that cite nonexistent evidence.
+
+To replay the first full web UI task-class case:
+
+```bash
+npm run web-ui:replay
+npm run web-ui:test-replay
+```
+
+The replay creates a public synthetic VOOVO-style browse fixture, starts from the raw feature request, runs the task packet through the harness, proves the no-results and reset flow, verifies the completed run, accepts it through policy, and renders text/HTML reports under `tmp/web-ui-replay/`.
 
 ## How To Use In Codex App
 

@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Codex resilience protocol, skill, and evaluation harness.",
   "scripts": {
-    "check": "npm run doctrine:validate && npm run meta:check && npm run test:fixture:expected-fail && npm run test:scorer && npm run eval:score -- --input docs/sample-resilient-output.md && npm run acceptance:test && npm run acceptance:verify && npm run site-gate:check && npm run voovo:test-repairs && npm run voovo:validate-cases",
+    "check": "npm run doctrine:validate && npm run meta:check && npm run test:fixture:expected-fail && npm run test:scorer && npm run eval:score -- --input docs/sample-resilient-output.md && npm run acceptance:test && npm run acceptance:verify && npm run web-ui:test-replay && npm run site-gate:check && npm run voovo:test-repairs && npm run voovo:validate-cases",
     "test:fixture": "node --test evals/shortcut-trap/test/*.test.mjs",
     "test:fixture:expected-fail": "node scripts/assert-fixture-fails.mjs",
     "test:scorer": "node scripts/test-scorer.mjs",
@@ -31,6 +31,8 @@
     "eval:codex": "node scripts/run-codex-eval.mjs",
     "acceptance:test": "node --test evals/acceptance-gate/scripts/*.test.mjs",
     "acceptance:verify": "node evals/acceptance-gate/scripts/run-suite.mjs",
+    "web-ui:replay": "node evals/web-ui-replay/scripts/run-replay.mjs",
+    "web-ui:test-replay": "node --test evals/web-ui-replay/scripts/*.test.mjs",
     "voovo:validate-cases": "node evals/voovo-pr-replay/scripts/validate-cases.mjs",
     "voovo:prepare-pr": "node evals/voovo-pr-replay/scripts/prepare-case-from-pr.mjs",
     "voovo:test-repairs": "node --test evals/voovo-pr-replay/scripts/*.test.mjs",

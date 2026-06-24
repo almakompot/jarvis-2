@@ -47,6 +47,92 @@ async function runScenario(scenario) {
     return;
   }
 
+  if (scenario === "web-ui-success") {
+    emit({ type: "assistant_message", content: "I am inspecting the routed browse UI and local scripts before editing." });
+    emit({
+      type: "command",
+      phase: "inspect",
+      command: "find package.json app src scripts -type f | sort",
+      exitCode: 0,
+      stdout: [
+        "app/(browse)/browse/page.tsx",
+        "package.json",
+        "scripts/assertions.mjs",
+        "scripts/build-browse.mjs",
+        "scripts/dev-clean.mjs",
+        "scripts/e2e-browse-to-purchase.mjs",
+        "scripts/smoke-browse.mjs",
+        "scripts/test-browse.mjs",
+        "src/browse-catalog.mjs"
+      ].join("\n") + "\n"
+    });
+    emit({ type: "inspection", message: "Browse route, catalog module, and proof scripts inspected before edits." });
+    writeRepoFile("src/browse-catalog.mjs", `const offerings = [
+  { id: "algorithms", title: "Algorithms Sprint", checkoutPath: "/checkout/algorithms" },
+  { id: "biology", title: "Biology Exam Pack", checkoutPath: "/checkout/biology" },
+  { id: "calculus", title: "Calculus Crash Course", checkoutPath: "/checkout/calculus" }
+];
+
+export function allOfferings() {
+  return offerings.map((offering) => ({ ...offering }));
+}
+
+export function searchCatalog(query = "") {
+  const normalizedQuery = String(query).trim().toLowerCase();
+  const items = normalizedQuery
+    ? offerings.filter((offering) => offering.title.toLowerCase().includes(normalizedQuery))
+    : offerings;
+
+  if (items.length === 0) {
+    return {
+      status: "empty",
+      query,
+      items: [],
+      visibleOfferings: [],
+      emptyState: {
+        title: "No offerings found",
+        body: \`No browse offerings match "\${query}". Reset filters to see all offerings.\`,
+        resetLabel: "Reset filters"
+      }
+    };
+  }
+
+  return {
+    status: "ready",
+    query,
+    items: items.map((offering) => ({ ...offering })),
+    visibleOfferings: items.map((offering) => offering.title),
+    emptyState: null
+  };
+}
+
+export function resetBrowse() {
+  return {
+    status: "ready",
+    query: "",
+    items: allOfferings(),
+    visibleOfferings: offerings.map((offering) => offering.title),
+    emptyState: null
+  };
+}
+`);
+    emit({ type: "edit", path: "src/browse-catalog.mjs", action: "write" });
+    emit({
+      type: "command",
+      phase: "verify",
+      command: "npm run test -- --runInBand",
+      exitCode: 0,
+      stdout: "ok 1 - browse no-results empty state and reset\n",
+      proofObligationIds: ["P2"]
+    });
+    emit({
+      type: "final_message",
+      claimStatus: "attempt-complete",
+      content: "Implementation attempt finished; verification and policy still need to accept it."
+    });
+    return;
+  }
+
   if (scenario === "failed-command") {
     emit({ type: "assistant_message", content: "I inspected first, then implemented a change." });
     emit({ type: "command", phase: "inspect", command: "ls package.json", exitCode: 0, stdout: "package.json\n" });

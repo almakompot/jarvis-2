@@ -82,6 +82,7 @@ The validator rejects packets that are incomplete, unmapped, too generic for con
 - total runner timeout
 - user interruption
 - final overclaim before verification
+- web UI browse empty-state/reset implementation attempts
 
 The runner writes command stdout/stderr under `evidence/commands/`, process stdout/stderr under `evidence/runner/`, appends JSONL transcript and event rows, captures a before/after filesystem diff excluding `.task-runs`, `.git`, and `node_modules`, and records terminal status in `runner-state.json`. Forbidden or sensitive paths such as `.env` are listed by path only; their content is redacted from `diff.patch`.
 
@@ -149,6 +150,17 @@ Committed cases must be public synthetic or otherwise sanitized:
 `npm run meta:corpus` builds deterministic fixture runs, applies the case mutation, reruns M6 and M9, and writes `tmp/meta-harness-corpus/replay-summary.json`. The current corpus includes five expected-fail cases for fake verification, missing browser smoke, forbidden `.env` edits, failed verification reported as passed, and proof timing before final edits. It also includes one expected-pass case proving a valid command-proof run is still accepted.
 
 `npm run meta:promote-failure` creates a private-staging skeleton from a rejected or blocked run. It records the source decision and expected rules but does not copy raw run artifacts; promoted cases must be minimized and sanitized before commit.
+
+## Web UI Replay
+
+`evals/web-ui-replay` contains the first full web UI replay for the harness. It creates a public synthetic VOOVO-style browse fixture, initializes a real task packet from the raw request, runs the `web-ui-success` fake implementation scenario, executes command and browser-smoke proof, adds repo-profile and final-report bridge evidence, runs M6 verifier, runs M9 policy, and renders M8 reports.
+
+```bash
+npm run web-ui:replay
+npm run web-ui:test-replay
+```
+
+The replay must end with `verification: passed`, `verifier: passed`, and `policy: accepted`. `npm run check` includes the regression test.
 
 ## M8 CLI And Reports
 

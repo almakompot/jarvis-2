@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "kind": "meta-harness.web-ui-replay-case",
+  "id": "voovo-browse-empty-state",
+  "title": "VOOVO-style browse no-results empty state and reset",
+  "implementationPlanVersion": "implementation-plan-v1-accepted-2026-06-24",
+  "controllingSections": ["3", "19", "20", "21", "24", "25", "30", "33"],
+  "runId": "web-ui-voovo-browse-empty-state",
+  "task": {
+    "raw": "Fix the VOOVO checkout browse flow so searching for unavailable marketplace content such as zzzzxqwerty999 shows a clear no-results empty state, and the reset action restores visible offerings without checkout or navigation regressions.",
+    "workedExample": "voovo-checkout browse empty-state/reset"
+  },
+  "fixture": {
+    "name": "public-synthetic-next-browse",
+    "taskClass": "web-ui",
+    "startsBroken": true,
+    "notes": [
+      "This fixture is synthetic and contains no private VOOVO code or data.",
+      "The route and script names mimic a Next browse surface enough for the meta-harness to profile and verify the task class."
+    ]
+  },
+  "expected": {
+    "runnerStatus": "implemented",
+    "verificationStatus": "passed",
+    "verifierStatus": "passed",
+    "policyDecision": "accepted",
+    "requiredEvidenceTypes": [
+      "repo-profile",
+      "test-command",
+      "browser-smoke",
+      "negative-test-command",
+      "final-report"
+    ],
+    "requiredReports": ["text", "html"]
+  },
+  "privacy": {
+    "classification": "public-synthetic",
+    "sanitized": true,
+    "containsPrivateData": false,
+    "allowedForCommit": true
+  }
+}
