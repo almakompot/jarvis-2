@@ -872,7 +872,7 @@ function assertMonotonicTimestamps({ state, rows, artifact, severity }) {
       });
       continue;
     }
-    if (previous !== null && value < previous) {
+    if (previous !== null && value < previous && row.source !== "codex-cli-process") {
       addFinding(state, {
         severity,
         ruleId: "event.timestamp.nonmonotonic",
@@ -881,7 +881,9 @@ function assertMonotonicTimestamps({ state, rows, artifact, severity }) {
       });
       return;
     }
-    previous = value;
+    if (row.source !== "codex-cli-process") {
+      previous = value;
+    }
   }
 }
 

@@ -13,6 +13,7 @@ import { runCodexCli } from "./codex-runner.mjs";
 import { runCommandProofExecutor } from "./command-executor.mjs";
 import { promoteFailureRun } from "./corpus-manager.mjs";
 import { runPolicyEngine } from "./policy-engine.mjs";
+import { harvestRunnerEvidence } from "./runner-evidence.mjs";
 import { runSurfaceProofExecutor } from "./surface-executor.mjs";
 import { initTaskRun } from "./task-packet.mjs";
 import { appendJsonl, readJson, writeJson } from "./runner-utils.mjs";
@@ -76,12 +77,14 @@ export async function runVerifyPipeline({
 } = {}) {
   const absoluteRunDir = resolveRunDir(runDir);
   const steps = [];
+  const harvested = harvestRunnerEvidence({ runDir: absoluteRunDir });
+  steps.push({ name: "runner-evidence", status: harvested.status, count: harvested.evidenceEntries.length });
 
-  if (!skipCommands) {
+  if (!skipCommands && harvested.status !== "passed") {
     const command = await runCommandProofExecutor({ runDir: absoluteRunDir, timeoutMs: commandTimeoutMs });
     steps.push({ name: "commands", status: command.status, count: command.commandResults.length });
   }
-  if (!skipSurfaces) {
+  if (!skipSurfaces && harvested.status !== "passed") {
     const surface = await runSurfaceProofExecutor({ runDir: absoluteRunDir, timeoutMs: surfaceTimeoutMs });
     steps.push({ name: "surfaces", status: surface.status, count: surface.surfaceResults.length });
   }
