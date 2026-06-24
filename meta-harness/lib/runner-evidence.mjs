@@ -30,6 +30,8 @@ const surfaceEvidenceTypes = new Set([
   "manual-smoke-artifact"
 ]);
 
+const capturedCommandSources = new Set(["codex-cli-event", "orchestrator-command"]);
+
 export function harvestRunnerEvidence({ runDir, now = new Date() } = {}) {
   const absoluteRunDir = resolve(runDir);
   const spec = readJson(join(absoluteRunDir, "spec.json"));
@@ -83,14 +85,14 @@ export function harvestRunnerEvidence({ runDir, now = new Date() } = {}) {
       continue;
     }
     if (accepted.has("negative-test-command")) {
-      const entry = findNegativeCommand(commandLog);
+      const entry = findNegativeCommand({ commandLog, runDir: absoluteRunDir });
       if (entry) {
         evidence.push(nonCommandEvidence({ state, entry, obligation, type: "negative-test-command", note: "Runner captured an expected failing or invalid-input path." }));
+        continue;
       }
-      continue;
     }
     if (hasAcceptedSet(accepted, surfaceEvidenceTypes)) {
-      const surface = findSurfaceEvidence({ commandLog, accepted, taskClass: spec.taskClass });
+      const surface = findSurfaceEvidence({ commandLog, accepted, taskClass: spec.taskClass, runDir: absoluteRunDir });
       if (surface) {
         const harvested = surfaceEvidence({ state, entry: surface.entry, obligation, type: surface.type });
         surfaceResults.push(harvested.surfaceResult);
@@ -237,7 +239,7 @@ function readJsonl(path) {
 
 function findInspectionCommand(commandLog) {
   return commandLog.find((entry) =>
-    entry.source === "codex-cli-event"
+    isCapturedCommand(entry)
     && entry.exitCode === 0
     && /(\bgit status\b|\brg --files\b|\bsed -n\b|\bfind\b.*AGENTS\.md|\bpwd\b|\bls\b)/i.test(entry.command || "")
     && artifactPath(entry)
@@ -246,7 +248,7 @@ function findInspectionCommand(commandLog) {
 
 function findAutomatedCheck(commandLog) {
   const candidates = commandLog.filter((entry) =>
-    entry.source === "codex-cli-event"
+    isCapturedCommand(entry)
     && entry.exitCode === 0
     && /(unittest|pytest|node --test|npm (?:run )?test|compileall|py_compile|git diff --check|typecheck|lint)/i.test(entry.command || "")
     && artifactPath(entry)
@@ -271,17 +273,40 @@ function scoreAutomatedCheck(entry) {
   return 0;
 }
 
-function findNegativeCommand(commandLog) {
+function findNegativeCommand({ commandLog, runDir }) {
   return commandLog.find((entry) =>
-    entry.source === "codex-cli-event"
+    isCapturedCommand(entry)
     && entry.exitCode !== 0
-    && /(invalid|bad|malformed|missing|uncertain|operations_invalid|bad-parliament|hu_parliament_malformed|scope bad|audio_source|target_not_found)/i.test(entry.command || "")
+    && /(invalid|bad|broken|negative|malformed|missing|uncertain|operations_invalid|bad-parliament|hu_parliament_malformed|scope bad|audio_source|target_not_found)/i.test(entry.command || "")
     && artifactPath(entry)
+  ) || commandLog.find((entry) =>
+    isCapturedCommand(entry)
+    && entry.exitCode !== 0
+    && artifactPath(entry)
+    && /(statement_tracker|validate|check|ingest|import|review|store|parliament)/i.test(entry.command || "")
+    && artifactShowsExpectedFailure({ runDir, entry })
   ) || null;
 }
 
-function findSurfaceEvidence({ commandLog, accepted, taskClass }) {
-  const passed = commandLog.filter((entry) => entry.source === "codex-cli-event" && entry.exitCode === 0 && artifactPath(entry));
+function artifactShowsExpectedFailure({ runDir, entry }) {
+  const text = [entry.stdoutPath, entry.stderrPath]
+    .filter(Boolean)
+    .map((path) => readArtifactText(runDir, path))
+    .join("\n");
+  return /"processing_status"\s*:\s*"failed"|"status"\s*:\s*"failed"|validation failed|rejected/i.test(text)
+    && /"errors"\s*:|"error_count"\s*:|no usable|malformed|missing|invalid|bad input|target_not_found/i.test(text);
+}
+
+function readArtifactText(runDir, path) {
+  const fullPath = join(runDir, path);
+  if (!existsSync(fullPath)) {
+    return "";
+  }
+  return readFileSync(fullPath, "utf8").slice(0, 20000);
+}
+
+function findSurfaceEvidence({ commandLog, accepted, taskClass, runDir }) {
+  const passed = commandLog.filter((entry) => isCapturedCommand(entry) && entry.exitCode === 0 && artifactPath(entry));
   if (taskClass === "data-pipeline" && hasAccepted(accepted, ["data-fixture", "generated-artifact", "manifest"])) {
     const entry = passed.find((item) => /statement_tracker\b(?![^']*--help).*(?:ingest-source|validate|check|search|review|parliament-import|parliament-check|store-check|store-export)/i.test(item.command || ""));
     return entry ? { entry, type: firstAccepted(accepted, ["data-fixture", "manifest", "generated-artifact"]) } : null;
@@ -291,14 +316,43 @@ function findSurfaceEvidence({ commandLog, accepted, taskClass }) {
     return entry ? { entry, type: "cli-smoke" } : null;
   }
   if (taskClass === "api" && hasAccepted(accepted, ["api-smoke", "request-response"])) {
-    const entry = passed.find((item) => /\b(curl|http)\b.*(localhost|127\.0\.0\.1)|request-response|api-smoke/i.test(item.command || ""));
-    return entry ? { entry, type: firstAccepted(accepted, ["api-smoke", "request-response"]) } : null;
+    const httpEntry = passed.find((item) => /\b(curl|http)\b.*(localhost|127\.0\.0\.1)|request-response|api-smoke/i.test(item.command || ""));
+    if (httpEntry) {
+      return { entry: httpEntry, type: firstAccepted(accepted, ["api-smoke", "request-response"]) };
+    }
+    const dbEntry = passed.find((item) => localBackendRequestResponse({ entry: item, runDir }));
+    return dbEntry ? { entry: dbEntry, type: firstAccepted(accepted, ["request-response", "api-smoke"]) } : null;
   }
   if (hasAccepted(accepted, ["browser-smoke", "screenshot", "trace"])) {
-    const entry = passed.find((item) => /(playwright|browser|chromium|chrome|edge).*(screenshot|trace|goto|locator|click|page\.)/i.test(item.command || ""));
+    const entry = passed.find((item) => /(playwright|browser|chromium|chrome|edge).*(screenshot|trace|goto|locator|click|page\.)/i.test(item.command || ""))
+      || passed.find((item) => browserSmokeArtifact({ entry: item, runDir }));
     return entry ? { entry, type: firstAccepted(accepted, ["browser-smoke", "screenshot", "trace"]) } : null;
   }
   return null;
+}
+
+function isCapturedCommand(entry) {
+  return capturedCommandSources.has(entry.source);
+}
+
+function localBackendRequestResponse({ entry, runDir }) {
+  const command = entry.command || "";
+  if (!/(store-load|psql|postgres|pgvector)/i.test(command)) {
+    return false;
+  }
+  const text = readArtifactText(runDir, entry.stdoutPath || "");
+  return /"status"\s*:\s*"passed"|sources=\d+|statements=\d+|embeddings=\d+/i.test(text);
+}
+
+function browserSmokeArtifact({ entry, runDir }) {
+  const command = entry.command || "";
+  if (!/(browser|playwright|chromium|chrome|edge)/i.test(command)) {
+    return false;
+  }
+  const text = readArtifactText(runDir, entry.stdoutPath || "");
+  return /"status"\s*:\s*"passed"/i.test(text)
+    && /"screenshot"\s*:|browser-smoke|canvas|pageErrors|consoleErrors/i.test(text)
+    && !/"pageErrors"\s*:\s*\[[^\]]+\]/i.test(text);
 }
 
 function commandEvidence({ state, entry, obligation, type, testId }) {
