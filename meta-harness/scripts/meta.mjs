@@ -2,7 +2,7 @@
 
 import process from "node:process";
 
-import { notifyBlockedRun } from "../lib/block-notifier.mjs";
+import { notifyBlockedRun, notifyCompletionRun } from "../lib/block-notifier.mjs";
 import {
   cleanupRuns,
   createRerun,
@@ -72,6 +72,13 @@ try {
         reason: blockedVerifyReason(result),
         resumeCommand: `npm run meta -- verify --run ${result.runDir}`
       });
+    } else if (result.status === "accepted") {
+      emitCompletionNotification({
+        runDir: result.runDir,
+        phase: "verify",
+        reason: completionVerifyReason(result),
+        nextCommand: `npm run meta -- report --run ${result.runDir} --format text`
+      });
     }
     process.exit(result.status === "accepted" ? 0 : result.status === "blocked" ? 3 : result.status === "rejected" ? 2 : 0);
   } else if (command === "report") {
@@ -136,6 +143,15 @@ function emitBlockedNotification({ runDir, phase, reason, resumeCommand }) {
   }
 }
 
+function emitCompletionNotification({ runDir, phase, reason, nextCommand }) {
+  const notification = notifyCompletionRun({ runDir, phase, reason, nextCommand });
+  if (notification.status === "sent") {
+    console.error(`Completion notification sent: ${notification.artifact}`);
+  } else {
+    console.error(`Completion notification ${notification.status}: ${notification.skipReason || notification.failure || "unknown"}`);
+  }
+}
+
 function blockedRunReason(result) {
   return result.runnerState?.failures?.[0]?.message
     || result.runnerState?.terminalState?.reason
@@ -146,6 +162,11 @@ function blockedVerifyReason(result) {
   return result.policy?.decisionReason
     || result.steps.find((step) => step.status === "blocked")?.name
     || "Verification stopped with a blocked status.";
+}
+
+function completionVerifyReason(result) {
+  return result.policy?.decisionReason
+    || "Policy accepted. Required proof passed and residual risk is recorded.";
 }
 
 function parseInitArgs(argv) {

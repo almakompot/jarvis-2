@@ -10,7 +10,7 @@ import { runFakeCodex } from "../lib/fake-runner.mjs";
 import { runPolicyEngine } from "../lib/policy-engine.mjs";
 import { initTaskRun } from "../lib/task-packet.mjs";
 import { runCompletedRunVerifier } from "../lib/verifier.mjs";
-import { notifyBlockedRun, notificationMessage } from "../lib/block-notifier.mjs";
+import { notifyBlockedRun, notifyCompletionRun, notificationMessage } from "../lib/block-notifier.mjs";
 
 test("M8 meta report snapshot for an accepted run leads with findings and evidence links", async (t) => {
   const { repo, runDir } = await createAcceptedCommandRun("m8-accepted-report");
@@ -82,6 +82,23 @@ test("M8 meta run exits loudly and records notification artifact when runner blo
   assert.match(notification.resumeCommand, /npm run meta -- run --run/);
 });
 
+test("M8 meta verify records completion notification artifact when policy accepts", async (t) => {
+  const { repo, runDir } = await createAcceptedCommandRun("m8-completion-notification");
+  t.after(() => rmSync(repo, { recursive: true, force: true }));
+
+  const verify = runMeta(["verify", "--run", runDir, "--skip-surfaces", "--command-timeout-ms", "1000"]);
+
+  assert.equal(verify.status, 0, verify.stderr);
+  assert.match(verify.stdout, /Verification pipeline status: accepted/);
+  assert.match(verify.stderr, /Completion notification skipped: disabled/);
+  const notification = readJson(join(runDir, "completion-notification.json"));
+  assert.equal(notification.status, "skipped");
+  assert.equal(notification.skipReason, "disabled");
+  assert.equal(notification.phase, "verify");
+  assert.equal(notification.decision, "accepted");
+  assert.match(notification.nextCommand, /npm run meta -- report --run/);
+});
+
 test("blocked notifier builds macOS notification payload without firing real osascript", (t) => {
   const runDir = mkdtempSync(join(tmpdir(), "meta-harness-notifier-"));
   t.after(() => rmSync(runDir, { recursive: true, force: true }));
@@ -102,12 +119,45 @@ test("blocked notifier builds macOS notification payload without firing real osa
 
   assert.equal(result.status, "sent");
   assert.equal(calls[0].executable, "osascript");
-  assert.match(calls[0].args[1], /display notification/);
+  assert.match(calls[0].args[1], /display dialog/);
   assert.match(calls[0].args[1], /Meta-Harness blocked/);
+  assert.match(calls[0].args[1], /with icon stop/);
+  assert.match(calls[0].args[1], /giving up after 30/);
   assert.match(notificationMessage(result), /Vercel production deployment approval is missing/);
   const artifact = readJson(join(runDir, "blocked-notification.json"));
   assert.equal(artifact.status, "sent");
+  assert.equal(artifact.macosDelivery, "timed-alert-dialog");
   assert.equal(artifact.phase, "verify");
+});
+
+test("completion notifier builds macOS accepted payload without firing real osascript", (t) => {
+  const runDir = mkdtempSync(join(tmpdir(), "meta-harness-completion-notifier-"));
+  t.after(() => rmSync(runDir, { recursive: true, force: true }));
+  const calls = [];
+
+  const result = notifyCompletionRun({
+    runDir,
+    phase: "verify",
+    reason: "No active reject or block policy rules fired.",
+    nextCommand: `npm run meta -- report --run ${runDir} --format text`,
+    platform: "darwin",
+    env: {},
+    runner: (executable, args) => {
+      calls.push({ executable, args });
+      return { status: 0, stderr: "" };
+    }
+  });
+
+  assert.equal(result.status, "sent");
+  assert.equal(calls[0].executable, "osascript");
+  assert.match(calls[0].args[1], /display dialog/);
+  assert.match(calls[0].args[1], /Meta-Harness accepted/);
+  assert.match(calls[0].args[1], /with icon note/);
+  assert.match(notificationMessage(result), /No active reject or block policy rules fired/);
+  const artifact = readJson(join(runDir, "completion-notification.json"));
+  assert.equal(artifact.status, "sent");
+  assert.equal(artifact.decision, "accepted");
+  assert.equal(artifact.macosDelivery, "timed-alert-dialog");
 });
 
 test("M8 meta report gives a useful missing-file CLI error", async (t) => {
@@ -317,6 +367,7 @@ function runMeta(args, options = {}) {
     env: {
       ...process.env,
       META_HARNESS_NOTIFY_BLOCKED: "0",
+      META_HARNESS_NOTIFY_COMPLETION: "0",
       ...(options.env || {})
     },
     encoding: "utf8"

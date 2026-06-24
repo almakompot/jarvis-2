@@ -124,7 +124,8 @@ const docRequirements = [
       "agent/harness repair action",
       "user/operator input needed",
       "blocked-notification.json",
-      "meta run` exits `3`"
+      "meta run` exits `3`",
+      "completion-notification.json"
     ]
   },
   {

@@ -61,7 +61,9 @@ Findings come first so rejected and blocked runs are not buried below useful-loo
 
 `Next action` names the next actor and action. For `accepted`, archive the artifacts and hand off residual risk. For `rejected`, the default actor is the agent/harness repair loop unless the report says otherwise. For `blocked`, the next actor is the user/operator because an external condition or approval is required.
 
-Blocked CLI commands exit `3`. On macOS they emit a native notification and write `blocked-notification.json` with the blocker and resume command.
+Blocked CLI commands exit `3`. On macOS they show a timed error popup and write `blocked-notification.json` with the blocker and resume command.
+
+Accepted `meta verify` commands exit `0`. On macOS they show a timed completion popup and write `completion-notification.json` with the report command.
 
 ## HTML Report
 

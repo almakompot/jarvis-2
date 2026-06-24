@@ -81,7 +81,9 @@ Do not report completion from memory or assistant prose. Use the policy decision
 - `rejected`: current artifacts do not support the completion claim. The default next actor is the agent/harness repair loop: fix implementation, proof, or evidence, then rerun verification and policy, or start a child run.
 - `blocked`: a real external condition prevents proof, such as missing credentials, unsafe approval boundary, unavailable target environment, or required live access. This is the user/operator-needed state.
 
-Rejected is repairable by default. Do not notify the user by default unless retries repeat, scope changes, or the safe next action is unclear. Blocked is the state that asks the user/operator for input. If blocked, name the condition and evidence. Do not use blocked for inconvenience. Blocked `run` and `verify` commands exit `3`, emit a macOS notification when available, and write `blocked-notification.json` with the resume command.
+Rejected is repairable by default. Do not notify the user by default unless retries repeat, scope changes, or the safe next action is unclear. Blocked is the state that asks the user/operator for input. If blocked, name the condition and evidence. Do not use blocked for inconvenience. Blocked `run` and `verify` commands exit `3`, show a timed macOS error popup when available, and write `blocked-notification.json` with the resume command.
+
+Accepted `meta verify` runs exit `0`, show a timed macOS completion popup when available, and write `completion-notification.json` with the report command.
 
 ## Report Discipline
 
