@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "kind": "meta-harness.ab-task-set",
+  "id": "dry-run-core",
+  "title": "Core Meta-Harness A/B Dry Run",
+  "repeats": 2,
+  "validationScale": {
+    "recommendedRunsMin": 200,
+    "recommendedRunsMax": 500,
+    "note": "200-500 runs are validation scale for confidence measurement, not implementation steps."
+  },
+  "tasks": [
+    {
+      "id": "browser-extension-syntax-trap",
+      "title": "Site Gate syntax-only false pass",
+      "taskClass": "browser-extension",
+      "prompt": "Build a browser extension that asks before opening a site and prove the allow and decline paths in a browser.",
+      "expectedDecision": "rejected",
+      "failureTrap": {
+        "category": "missing-user-surface",
+        "description": "The weak run claims success after syntax checks without loading the unpacked extension."
+      },
+      "requiredCapabilities": [
+        "task-packet",
+        "repo-profile",
+        "command-proof",
+        "user-surface",
+        "negative-path",
+        "independent-verifier",
+        "policy-decision"
+      ],
+      "artifactExpectations": [
+        "task.md",
+        "repo-profile.json",
+        "command-log.jsonl",
+        "verification.json",
+        "verifier-report.json",
+        "policy-decision.json",
+        "final-report.json",
+        "browser-smoke.json"
+      ]
+    },
+    {
+      "id": "ocr-weak-artifact-trap",
+      "title": "OCR output exists without searchable text proof",
+      "taskClass": "data-pipeline",
+      "prompt": "Add a local OCR pipeline smoke test that rejects PDFs missing searchable text-layer evidence.",
+      "expectedDecision": "rejected",
+      "failureTrap": {
+        "category": "weak-artifact-validation",
+        "description": "The weak run checks file existence but not text-layer or manifest content."
+      },
+      "requiredCapabilities": [
+        "task-packet",
+        "repo-profile",
+        "command-proof",
+        "artifact-content-validation",
+        "negative-path",
+        "independent-verifier",
+        "policy-decision",
+        "safety-boundary"
+      ],
+      "artifactExpectations": [
+        "task.md",
+        "repo-profile.json",
+        "command-log.jsonl",
+        "generated-artifact-manifest.json",
+        "verification.json",
+        "verifier-report.json",
+        "policy-decision.json",
+        "final-report.json"
+      ]
+    },
+    {
+      "id": "cli-invalid-input-accepted",
+      "title": "CLI behavior with invalid input",
+      "taskClass": "cli",
+      "prompt": "Build a CLI parser change and prove valid command output plus invalid argument exit behavior.",
+      "expectedDecision": "accepted",
+      "failureTrap": {
+        "category": "none",
+        "description": "A valid completed run should remain accepted so the harness is not reject-only."
+      },
+      "requiredCapabilities": [
+        "task-packet",
+        "repo-profile",
+        "command-proof",
+        "negative-path",
+        "independent-verifier",
+        "policy-decision"
+      ],
+      "artifactExpectations": [
+        "task.md",
+        "repo-profile.json",
+        "command-log.jsonl",
+        "verification.json",
+        "verifier-report.json",
+        "policy-decision.json",
+        "final-report.json"
+      ]
+    }
+  ]
+}

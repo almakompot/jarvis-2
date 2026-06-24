@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "kind": "meta-harness.ab-variants",
+  "id": "dry-run-variants",
+  "variants": [
+    {
+      "id": "baseline-codex",
+      "label": "Baseline Codex",
+      "kind": "baseline",
+      "runnerCommand": "codex exec <prompt>",
+      "capabilities": [
+        "command-proof"
+      ],
+      "artifactPolicy": [
+        "transcript",
+        "final-response"
+      ],
+      "decisionPolicy": "accepts-final-claim"
+    },
+    {
+      "id": "meta-harnessed-codex",
+      "label": "Meta-Harnessed Codex",
+      "kind": "meta-harness",
+      "runnerCommand": "npm run meta -- run --repo <repo> --task <prompt>",
+      "capabilities": [
+        "task-packet",
+        "repo-profile",
+        "command-proof",
+        "user-surface",
+        "negative-path",
+        "artifact-content-validation",
+        "independent-verifier",
+        "policy-decision",
+        "safety-boundary"
+      ],
+      "artifactPolicy": [
+        "task.md",
+        "repo-profile.json",
+        "transcript.jsonl",
+        "command-log.jsonl",
+        "diff.patch",
+        "changed-files.json",
+        "verification.json",
+        "verifier-report.json",
+        "policy-decision.json",
+        "final-report.json",
+        "html-report"
+      ],
+      "decisionPolicy": "policy-gated"
+    }
+  ]
+}
