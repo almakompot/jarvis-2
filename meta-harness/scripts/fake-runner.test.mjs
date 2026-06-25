@@ -26,6 +26,7 @@ test("fake runner captures transcript, command log, diff, changed files, events,
   assert.ok(result.transcriptEntries.some((entry) => entry.type === "file_edit"));
   assert.ok(result.changedFiles.files.some((file) => file.path === "src/site-gate.js" && file.status === "added"));
   assert.match(readFileSync(join(runDir, "diff.patch"), "utf8"), /diff --git a\/src\/site-gate\.js b\/src\/site-gate\.js/);
+  assert.equal(readJson(join(runDir, "runner-config.json")).timeouts.totalMs, null);
   assert.ok(existsSync(join(runDir, "evidence", "commands", "cmd.0001.stdout.txt")));
   assert.ok(existsSync(join(runDir, "evidence", "runner", "fake-codex.stdout.jsonl")));
 

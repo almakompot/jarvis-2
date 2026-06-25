@@ -108,8 +108,7 @@ test("real Codex wrapper captures process output, transcript, diff, changed file
   const result = await runCodexCli({
     runDir,
     executable: process.execPath,
-    executableArgs: [fakeCli],
-    totalTimeoutMs: 1000
+    executableArgs: [fakeCli]
   });
 
   assert.equal(result.status, "implemented");
@@ -121,7 +120,9 @@ test("real Codex wrapper captures process output, transcript, diff, changed file
   assert.ok(result.transcriptEntries.some((entry) => entry.source === "codex-cli"));
   assert.ok(result.changedFiles.files.some((file) => file.path === "src/real-codex-runner.js" && file.status === "added"));
   assert.match(readFileSync(join(runDir, "diff.patch"), "utf8"), /diff --git a\/src\/real-codex-runner\.js b\/src\/real-codex-runner\.js/);
-  assert.match(readFileSync(join(runDir, "runner-config.json"), "utf8"), /codex-cli 999\.0\.0-test/);
+  const runnerConfig = readJson(join(runDir, "runner-config.json"));
+  assert.match(JSON.stringify(runnerConfig), /codex-cli 999\.0\.0-test/);
+  assert.equal(runnerConfig.timeouts.totalMs, null);
   assert.equal(readJson(join(runDir, "final-report.json")).outcome, "pending");
   assertStructuralValidation(runDir);
 });

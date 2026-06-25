@@ -23,6 +23,10 @@ const harnessRoot = resolve(moduleDir, "../..");
 const defaultCodexModel = "gpt-5.5";
 const defaultCodexReasoningEffort = "high";
 
+function hasPositiveTimeout(value) {
+  return Number.isFinite(value) && value > 0;
+}
+
 export function buildCodexRunnerPrompt({ runDir, dryRun = false }) {
   const absoluteRunDir = resolve(runDir);
   const taskMarkdown = readFileSync(join(absoluteRunDir, "task.md"), "utf8");
@@ -164,7 +168,7 @@ export async function runCodexCli({
   executableArgs = [],
   sandbox = "workspace-write",
   dryRun = false,
-  totalTimeoutMs = 120000,
+  totalTimeoutMs = null,
   extraArgs = [],
   env = process.env
 }) {
@@ -269,17 +273,21 @@ export async function runCodexCli({
   });
   child.stdin.end(prompt);
 
-  const timeout = setTimeout(() => {
-    timedOut = true;
-    child.kill("SIGTERM");
-  }, totalTimeoutMs);
+  const timeout = hasPositiveTimeout(totalTimeoutMs)
+    ? setTimeout(() => {
+      timedOut = true;
+      child.kill("SIGTERM");
+    }, totalTimeoutMs)
+    : null;
 
   const terminal = await new Promise((resolvePromise) => {
     let resolved = false;
     const resolveOnce = (value) => {
       if (!resolved) {
         resolved = true;
-        clearTimeout(timeout);
+        if (timeout) {
+          clearTimeout(timeout);
+        }
         resolvePromise(value);
       }
     };
@@ -510,7 +518,7 @@ function writeRunnerConfig({ runDir, runId, createdAt, repoPath, command, cliInf
     timeouts: {
       idleMs: null,
       commandMs: null,
-      totalMs: totalTimeoutMs
+      totalMs: totalTimeoutMs ?? null
     },
     capture: {
       prompt: relativeArtifact(runDir, promptPath),
@@ -781,7 +789,7 @@ function determineRunnerStatus({ state, timedOut, interrupted, exitCode, spawnEr
     return "interrupted";
   }
   if (timedOut) {
-    addFailure(state, "timeout", "Codex CLI exceeded the configured total timeout.");
+    addFailure(state, "timeout", "Codex CLI exceeded the explicitly configured total timeout.");
     return "blocked";
   }
   if (spawnError) {

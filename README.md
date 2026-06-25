@@ -50,6 +50,8 @@ jarvis-harness verify --run /path/to/repo/.task-runs/<id>
 jarvis-harness report --run /path/to/repo/.task-runs/<id> --format text
 ```
 
+Implementation runs have no default wall-clock timeout. Add `--timeout-ms <ms>` only when an operator deliberately wants a maximum elapsed-time guard; verification proof commands still use finite command/surface timeouts.
+
 Development fallback from this repo still works:
 
 ```bash
@@ -130,6 +132,8 @@ Run the real Codex wrapper against an existing task packet:
 ```bash
 npm run meta:codex-runner -- --run-dir /path/to/repo/.task-runs/<id>
 ```
+
+The Codex wrapper has no default wall-clock timeout. `--timeout-ms` is opt-in and records the configured limit in `runner-config.json`.
 
 Run the command proof executor against `proof-plan.json` and `spec.requiredTests`:
 

@@ -31,6 +31,10 @@ export const fakeRunnerScenarios = [
   "final-overclaim"
 ];
 
+function hasPositiveTimeout(value) {
+  return Number.isFinite(value) && value > 0;
+}
+
 export function fakeCodexProcessPath() {
   return resolve(dirname(fileURLToPath(import.meta.url)), "../scripts/fake-codex.mjs");
 }
@@ -39,7 +43,7 @@ export async function runFakeCodex({
   runDir,
   scenario = "success",
   now = new Date(),
-  totalTimeoutMs = 2000,
+  totalTimeoutMs = null,
   executable = process.execPath,
   scriptPath = fakeCodexProcessPath()
 }) {
@@ -88,7 +92,7 @@ export async function runFakeCodex({
     timeouts: {
       idleMs: null,
       commandMs: null,
-      totalMs: totalTimeoutMs
+      totalMs: totalTimeoutMs ?? null
     },
     capture: {
       transcript: "jsonl-stdout",
@@ -138,10 +142,12 @@ export async function runFakeCodex({
   });
   state.pid = child.pid ?? null;
 
-  const timeout = setTimeout(() => {
-    timedOut = true;
-    child.kill("SIGTERM");
-  }, totalTimeoutMs);
+  const timeout = hasPositiveTimeout(totalTimeoutMs)
+    ? setTimeout(() => {
+      timedOut = true;
+      child.kill("SIGTERM");
+    }, totalTimeoutMs)
+    : null;
 
   const terminal = await new Promise((resolvePromise) => {
     child.stdout.on("data", (chunk) => {
@@ -160,7 +166,9 @@ export async function runFakeCodex({
     });
 
     child.on("close", (exitCode, signal) => {
-      clearTimeout(timeout);
+      if (timeout) {
+        clearTimeout(timeout);
+      }
       if (stdoutBuffer.trim()) {
         consumeFakeEventLine({ line: stdoutBuffer, state, commandEvidenceDir, allowedFiles });
       }
@@ -472,7 +480,7 @@ function determineRunnerStatus({ state, timedOut, interrupted, exitCode }) {
     return "interrupted";
   }
   if (timedOut) {
-    addFailure(state, "timeout", "Fake runner exceeded the configured total timeout.");
+    addFailure(state, "timeout", "Fake runner exceeded the explicitly configured total timeout.");
     return "blocked";
   }
   if (state.failures.length > 0) {

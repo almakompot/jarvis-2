@@ -63,6 +63,8 @@ For a normal run, use:
 jarvis-harness run --repo /path/to/repo --task "build the requested feature"
 ```
 
+Normal implementation runs have no default wall-clock timeout. Do not add `--timeout-ms` for large feature work unless the operator explicitly wants the harness to stop the Codex process after that many milliseconds. Proof commands and browser/API surface checks still have finite verification timeouts.
+
 For a safe prompt/capture check without implementation edits:
 
 ```bash
@@ -165,6 +167,7 @@ If live runner startup fails:
 - Unsupported model: check `META_HARNESS_CODEX_MODEL` and the account's available Codex CLI models.
 - Missing Codex command: fix the local Codex CLI install or `PATH`.
 - Wrong command shape: use `jarvis-harness ...`; if `jarvis-harness` is missing, reinstall with `npm install -g .` from `jarvis-2`.
+- Unexpected timeout: check whether `--timeout-ms` was passed explicitly; there is no default wall-clock timeout for implementation runs.
 
 ## A/B Validation Scale
 

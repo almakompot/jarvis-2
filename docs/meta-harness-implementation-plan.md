@@ -470,7 +470,7 @@ Protocol injection uses current local docs. The runner should include or referen
 
 Cwd and sandbox selection matter. The runner should execute in the target repo. It should choose sandbox based on task risk. Workspace-write is enough for normal local edits. Network access should be recorded. Production-affecting commands should be blocked by policy unless approved.
 
-Timeout model should distinguish idle timeout, command timeout, and total run timeout. If Codex stalls, the runner records a timeout event and moves to blocked or rejected depending on stage. It should not silently kill and report success.
+Timeout model should distinguish idle timeout, command timeout, and total run timeout. Implementation runs should have no default wall-clock timeout; a total run timeout is an explicit operator guard only. If an explicit timeout fires, the runner records a timeout event and moves to blocked or rejected depending on stage. It should not silently kill and report success.
 
 Transcript capture stores prompts, assistant messages, tool calls, command calls, and final messages where available. If complete internal tool capture is unavailable, the runner records the best available logs and marks capture completeness. Missing transcript is a verifier warning or blocker depending on maturity.
 

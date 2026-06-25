@@ -52,7 +52,7 @@ export function writeRunReport({ runDir, format = "text", outputPath = null } = 
   return { report, outputPath: target };
 }
 
-export async function runMetaCommand({ runDir, executable = "codex", sandbox = "workspace-write", codexArgs = [], dryRun = false, fake = false, scenario = "success", timeoutMs = 120000 } = {}) {
+export async function runMetaCommand({ runDir, executable = "codex", sandbox = "workspace-write", codexArgs = [], dryRun = false, fake = false, scenario = "success", timeoutMs = null } = {}) {
   if (fake) {
     return runFakeMetaCommand({ runDir, scenario, timeoutMs });
   }
@@ -432,7 +432,8 @@ function compactTimestamp(now) {
 
 async function runFakeMetaCommand({ runDir, scenario, timeoutMs }) {
   const { runFakeCodex } = await import("./fake-runner.mjs");
-  return runFakeCodex({ runDir, scenario, totalTimeoutMs: timeoutMs });
+  const effectiveTimeoutMs = scenario === "timeout" && timeoutMs === null ? 2000 : timeoutMs;
+  return runFakeCodex({ runDir, scenario, totalTimeoutMs: effectiveTimeoutMs });
 }
 
 function isHarnessRunDir(candidate) {

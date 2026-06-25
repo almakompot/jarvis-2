@@ -27,6 +27,8 @@ jarvis-harness verify --run /path/to/repo/.task-runs/<id>
 jarvis-harness report --run /path/to/repo/.task-runs/<id> --format text
 ```
 
+Implementation runs have no default wall-clock timeout. Use `--timeout-ms <ms>` only as an explicit operator guard for a run you are willing to stop; verification commands and surface checks still keep finite proof-level timeouts.
+
 ### Packaging Status
 
 `jarvis-harness` is available through local global install from this checkout. The package remains private and is not published to npm.
@@ -102,6 +104,7 @@ jarvis-harness run --repo /path/to/repo --task "build X"
 jarvis-harness init --repo /path/to/repo --task "build X"
 jarvis-harness run --run /path/to/repo/.task-runs/<id>
 jarvis-harness run --run /path/to/repo/.task-runs/<id> --dry-run
+jarvis-harness run --run /path/to/repo/.task-runs/<id> --timeout-ms 3600000
 ```
 
 Verify and render:

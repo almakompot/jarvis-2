@@ -31,7 +31,7 @@ function parseArgs(argv) {
     executable: "codex",
     sandbox: "workspace-write",
     dryRun: false,
-    totalTimeoutMs: 120000
+    totalTimeoutMs: null
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -60,7 +60,7 @@ function parseArgs(argv) {
   if (!["read-only", "workspace-write", "danger-full-access"].includes(args.sandbox)) {
     throw new Error("--sandbox must be read-only, workspace-write, or danger-full-access.");
   }
-  if (!Number.isInteger(args.totalTimeoutMs) || args.totalTimeoutMs < 1) {
+  if (args.totalTimeoutMs !== null && (!Number.isInteger(args.totalTimeoutMs) || args.totalTimeoutMs < 1)) {
     throw new Error("--timeout-ms must be a positive integer.");
   }
 
@@ -69,9 +69,10 @@ function parseArgs(argv) {
 
 function printHelp() {
   console.log(`Usage:
-  node meta-harness/scripts/run-codex-runner.mjs --run-dir /path/to/.task-runs/<id> [--dry-run] [--sandbox workspace-write] [--timeout-ms 120000]
+  node meta-harness/scripts/run-codex-runner.mjs --run-dir /path/to/.task-runs/<id> [--dry-run] [--sandbox workspace-write] [--timeout-ms ms]
 
 Runs Codex CLI through the M4 harness and records prompt, process output, transcript, diff, changed files, events, and runner state.
+No total wall-clock timeout is applied unless --timeout-ms is explicitly provided.
 Dry-run mode requests read-only Codex execution and must not claim implementation acceptance.
 `);
 }

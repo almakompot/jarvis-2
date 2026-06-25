@@ -85,7 +85,8 @@ const docRequirements = [
       "git diff --check",
       "200-500 total runs",
       "Rejected is repairable by default",
-      "Blocked is the state that asks the user/operator for input"
+      "Blocked is the state that asks the user/operator for input",
+      "no default wall-clock timeout"
     ]
   },
   {
@@ -117,6 +118,7 @@ const docRequirements = [
       "npm install -g .",
       "jarvis-harness doctor",
       "jarvis-harness run --repo",
+      "no default wall-clock timeout",
       "npm run meta:final-audit"
     ]
   },
@@ -133,7 +135,8 @@ const docRequirements = [
       "user/operator input needed",
       "blocked-notification.json",
       "meta run` exits `3`",
-      "completion-notification.json"
+      "completion-notification.json",
+      "no default wall-clock timeout"
     ]
   },
   {

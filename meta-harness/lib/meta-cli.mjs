@@ -300,7 +300,7 @@ function parseRunArgs(argv, commandName) {
     dryRun: false,
     fake: false,
     scenario: "success",
-    timeoutMs: 120000
+    timeoutMs: null
   };
   for (let index = 0; index < argv.length; index += 1) {
     const item = argv[index];
@@ -328,6 +328,9 @@ function parseRunArgs(argv, commandName) {
       args.scenario = argv[++index];
     } else if (item === "--timeout-ms") {
       args.timeoutMs = Number(argv[++index]);
+      if (!Number.isInteger(args.timeoutMs) || args.timeoutMs < 1) {
+        throw new Error("--timeout-ms must be a positive integer.");
+      }
     } else {
       throw new Error(`Unknown run argument: ${item}`);
     }
@@ -484,8 +487,8 @@ function requireRun(runDir) {
 function printHelp({ commandName, stdout }) {
   writeLine(stdout, `Usage:
   ${commandName} init --repo /path/to/repo --task "build X" [--id run-id]
-  ${commandName} run --repo /path/to/repo --task "build X" [--id run-id] [--dry-run] [--codex-arg arg]
-  ${commandName} run --run /path/to/.task-runs/<id> [--dry-run]
+  ${commandName} run --repo /path/to/repo --task "build X" [--id run-id] [--dry-run] [--timeout-ms ms] [--codex-arg arg]
+  ${commandName} run --run /path/to/.task-runs/<id> [--dry-run] [--timeout-ms ms]
   ${commandName} verify --run /path/to/.task-runs/<id>
   ${commandName} report --run /path/to/.task-runs/<id> [--format text|html] [--output path]
   ${commandName} rerun --from /path/to/.task-runs/<id> [--id child-id]
@@ -493,6 +496,7 @@ function printHelp({ commandName, stdout }) {
   ${commandName} cleanup --repo /path/to/repo [--dry-run|--delete]
   ${commandName} doctor [--executable codex] [--json]
 
+Implementation runs have no default wall-clock timeout. Use --timeout-ms only as an explicit operator guard.
 The CLI is a thin M8 product surface over the run-folder artifacts. JSON artifacts remain authoritative.`);
 }
 

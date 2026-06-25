@@ -72,6 +72,7 @@ test("jarvis-harness run, verify, and report work from outside the jarvis repo",
   assert.match(run.stdout, /Runner status: implemented/);
   const runDir = join(repo, ".task-runs", "jarvis-global-flow");
   assert.match(readFileSync(join(runDir, "runner-state.json"), "utf8"), /implemented/);
+  assert.equal(readJson(join(runDir, "runner-config.json")).timeouts.totalMs, null);
 
   const verify = runJarvis(["verify", "--run", runDir, "--skip-surfaces", "--command-timeout-ms", "1000"], { cwd });
   assert.equal(verify.status, 2, verify.stderr);
@@ -362,6 +363,7 @@ test("M8 meta run can initialize from repo and task in one command", (t) => {
   assert.match(result.stdout, /Created task run:/);
   assert.match(result.stdout, /Runner status: implemented/);
   assert.match(result.stdout, /Run dir:/);
+  assert.equal(readJson(join(repo, ".task-runs", "m8-combined-run", "runner-config.json")).timeouts.totalMs, null);
   assert.match(readFileSync(join(repo, ".task-runs", "m8-combined-run", "runner-state.json"), "utf8"), /implemented/);
 });
 
