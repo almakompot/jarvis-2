@@ -111,22 +111,29 @@ No mobile layout. If opened on a phone, the page must force the same desktop can
 
 ```css
 :root {
-  --dashboard-width: 2400px;
+  --dashboard-min-width: 1500px;
+  --dashboard-width: max(100vw, var(--dashboard-min-width));
 }
 
 html,
 body {
-  min-width: var(--dashboard-width);
+  min-width: var(--dashboard-min-width);
   overflow-x: auto;
 }
 
 .dashboard {
-  width: var(--dashboard-width);
-  margin: 0 auto;
+  width: 100%;
+  min-width: var(--dashboard-min-width);
+  margin: 0;
+}
+
+#output {
+  white-space: pre;
+  overflow: auto;
 }
 ```
 
-The dashboard should be dense, operational, and information-rich. Panel widths and vertical spacing should derive from `--dashboard-width`, so zooming out reveals the whole surface without text being cut off. Avoid marketing-page styling, oversized hero sections, decorative cards, and mobile rearrangement.
+The dashboard should be dense, operational, and information-rich. It must not depend on a magic fixed target width. The dashboard shell must fill the browser width with only a desktop minimum floor. Panel widths should use proportional grid fractions, and vertical spacing should scale with viewport width. Zooming out should increase the available dashboard width and reveal more text. Raw live output must preserve log lines, prefix displayed lines with bracketed timestamps, and scroll horizontally instead of wrapping. Avoid marketing-page styling, oversized hero sections, decorative cards, and mobile rearrangement.
 
 ## ASCII Layout
 

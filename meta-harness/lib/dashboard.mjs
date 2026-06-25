@@ -129,13 +129,30 @@ export function readDashboardOutput({ runDir, maxBytes = defaultOutputBytes } = 
   const fakeStderrPath = join(absoluteRunDir, "evidence", "runner", "fake-codex.stderr.txt");
   const stdoutSource = existsSync(stdoutPath) ? stdoutPath : fakeStdoutPath;
   const stderrSource = existsSync(stderrPath) ? stderrPath : fakeStderrPath;
+  const events = readJsonlOptional(absoluteRunDir, "events.jsonl", { limit: 5000 }).items;
+  const stdout = readTail(stdoutSource, maxBytes);
+  const stderr = readTail(stderrSource, maxBytes);
   return {
     schemaVersion: 1,
     kind: "meta-harness.dashboard-output",
     stdoutPath: relativeArtifactPath(absoluteRunDir, stdoutSource),
     stderrPath: relativeArtifactPath(absoluteRunDir, stderrSource),
-    stdout: readTail(stdoutSource, maxBytes),
-    stderr: readTail(stderrSource, maxBytes)
+    stdout: {
+      ...stdout,
+      displayText: timestampedOutputText({
+        text: stdout.text,
+        fallbackTimestamp: stdout.modifiedAt,
+        events: stdoutCaptureEvents({ events, sourcePath: stdoutSource })
+      })
+    },
+    stderr: {
+      ...stderr,
+      displayText: timestampedOutputText({
+        text: stderr.text,
+        fallbackTimestamp: stderr.modifiedAt,
+        events: []
+      })
+    }
   };
 }
 
@@ -169,7 +186,7 @@ export function renderDashboardHtml() {
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=2400">
+  <meta name="viewport" content="width=device-width">
   <title>Jarvis Harness Run</title>
   <style>
     :root {
@@ -184,17 +201,18 @@ export function renderDashboardHtml() {
       --warn: #9a3412;
       --pending: #475569;
       --blue: #1d4ed8;
-      --dashboard-width: 2400px;
-      --space-1: calc(var(--dashboard-width) / 480);
-      --space-2: calc(var(--dashboard-width) / 240);
-      --space-3: calc(var(--dashboard-width) / 160);
-      --top-row-min: calc(var(--dashboard-width) * 0.17);
-      --mid-row-min: calc(var(--dashboard-width) * 0.14);
+      --dashboard-min-width: 1500px;
+      --dashboard-width: max(100vw, var(--dashboard-min-width));
+      --space-1: max(4px, 0.2vw);
+      --space-2: max(8px, 0.4vw);
+      --space-3: max(12px, 0.6vw);
+      --top-row-min: max(255px, 17vw);
+      --mid-row-min: max(210px, 14vw);
     }
     * { box-sizing: border-box; }
     html,
     body {
-      min-width: var(--dashboard-width);
+      min-width: var(--dashboard-min-width);
       margin: 0;
       overflow-x: auto;
       background: #e5e7eb;
@@ -202,8 +220,9 @@ export function renderDashboardHtml() {
       font: 13px/1.35 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
     }
     .dashboard {
-      width: var(--dashboard-width);
-      margin: 0 auto;
+      width: 100%;
+      min-width: var(--dashboard-min-width);
+      margin: 0;
       padding: var(--space-2);
     }
     .frame {
@@ -213,7 +232,7 @@ export function renderDashboardHtml() {
     .header {
       padding: var(--space-2) var(--space-3);
       display: grid;
-      grid-template-columns: minmax(0, 1fr) calc(var(--dashboard-width) * 0.12);
+      grid-template-columns: minmax(0, 1fr) minmax(180px, 12vw);
       gap: var(--space-2);
       border-bottom: 1px solid var(--line);
     }
@@ -251,12 +270,12 @@ export function renderDashboardHtml() {
     }
     .grid-top {
       display: grid;
-      grid-template-columns: calc(var(--dashboard-width) * 0.31) calc(var(--dashboard-width) * 0.33) minmax(0, 1fr);
+      grid-template-columns: minmax(0, 31fr) minmax(0, 33fr) minmax(0, 36fr);
       border-bottom: 1px solid var(--line);
     }
     .grid-mid {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) calc(var(--dashboard-width) * 0.26);
+      grid-template-columns: minmax(0, 74fr) minmax(0, 26fr);
       border-bottom: 1px solid var(--line);
     }
     .grid-low {
@@ -268,6 +287,7 @@ export function renderDashboardHtml() {
       min-height: var(--mid-row-min);
       padding: var(--space-2) var(--space-3);
       border-right: 1px solid var(--line);
+      min-width: 0;
       overflow: visible;
     }
     .grid-top section { min-height: var(--top-row-min); }
@@ -283,6 +303,15 @@ export function renderDashboardHtml() {
       white-space: pre-wrap;
       word-break: break-word;
       overflow: visible;
+    }
+    #output {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      max-height: calc(var(--top-row-min) - 48px);
+      overflow: auto;
+      white-space: pre;
+      word-break: normal;
     }
     table {
       width: 100%;
@@ -301,11 +330,11 @@ export function renderDashboardHtml() {
     th { text-align: left; color: var(--muted); font-weight: 700; }
     .decision {
       padding: var(--space-2) var(--space-3) var(--space-3);
-      min-height: calc(var(--dashboard-width) * 0.08);
+      min-height: max(120px, 8vw);
     }
     .kv {
       display: grid;
-      grid-template-columns: calc(var(--dashboard-width) * 0.12) minmax(0, 1fr);
+      grid-template-columns: minmax(170px, 12vw) minmax(0, 1fr);
       gap: var(--space-1) var(--space-3);
     }
     a { color: var(--blue); text-decoration: none; }
@@ -451,7 +480,9 @@ export function renderDashboardHtml() {
         ["Latest changed file", summary.currentActivity.latestChangedFile && summary.currentActivity.latestChangedFile.path],
         ["Latest artifact", artifactLink(summary.currentActivity.latestArtifact)]
       ]);
-      document.getElementById("output").textContent = [output.stdout && output.stdout.text, output.stderr && output.stderr.text ? "\\nstderr:\\n" + output.stderr.text : ""].filter(Boolean).join("\\n") || "no runner output yet";
+      const stdoutText = output.stdout && (output.stdout.displayText || output.stdout.text);
+      const stderrText = output.stderr && (output.stderr.displayText || output.stderr.text);
+      document.getElementById("output").textContent = [stdoutText, stderrText ? "\\nstderr:\\n" + stderrText : ""].filter(Boolean).join("\\n") || "no runner output yet";
       rows("requirements", summary.requirements, (req) => tr([req.id, req.text, req.status, (req.evidence || []).join(", ")]));
       rows("files", summary.changedFiles.files, (file) => tr([file.status, file.forbidden ? "forbidden" : "", file.path, artifactLink("diff.patch")]));
       rows("command-log", summary.commandLog.commands, (cmd) => tr([cmd.id, cmd.command, cmd.status, cmd.exitCode == null ? cmd.signal : cmd.exitCode]));
@@ -554,6 +585,11 @@ function handleDashboardRequest({ request, response, runDir }) {
     }
     if (url.pathname === "/") {
       sendText(response, 200, renderDashboardHtml(), "text/html; charset=utf-8");
+      return;
+    }
+    if (url.pathname === "/favicon.ico") {
+      response.writeHead(204, { "x-content-type-options": "nosniff" });
+      response.end();
       return;
     }
     if (url.pathname === "/api/summary") {
@@ -857,16 +893,48 @@ function readJsonlOptional(runDir, artifact, { limit = defaultJsonlLimit } = {})
 
 function readTail(path, maxBytes) {
   if (!existsSync(path)) {
-    return { text: "", truncated: false, bytes: 0 };
+    return { text: "", truncated: false, bytes: 0, modifiedAt: null };
   }
+  const stats = statSync(path);
   const buffer = readFileSync(path);
   const truncated = buffer.length > maxBytes;
   const slice = truncated ? buffer.subarray(buffer.length - maxBytes) : buffer;
   return {
     text: slice.toString("utf8"),
     truncated,
-    bytes: buffer.length
+    bytes: buffer.length,
+    modifiedAt: stats.mtime.toISOString()
   };
+}
+
+function timestampedOutputText({ text, fallbackTimestamp = null, events = [] } = {}) {
+  const normalized = String(text || "").replace(/\r\n/g, "\n");
+  if (!normalized) {
+    return "";
+  }
+  const lines = normalized.endsWith("\n") ? normalized.slice(0, -1).split("\n") : normalized.split("\n");
+  const eventTimestamps = events.map((event) => event.timestamp).filter(Boolean);
+  const offset = Math.max(0, eventTimestamps.length - lines.length);
+  return lines.map((line, index) => {
+    const timestamp = eventTimestamps[offset + index] || fallbackTimestamp || "timestamp-unavailable";
+    return `[${timestamp}] ${line}`;
+  }).join("\n");
+}
+
+function stdoutCaptureEvents({ events, sourcePath }) {
+  const source = basename(String(sourcePath || ""));
+  if (source.startsWith("fake-codex")) {
+    return events.filter((event) =>
+      event?.type === "runner-event"
+      && event.timestamp
+      && /^Captured fake /.test(event.message || "")
+    );
+  }
+  return events.filter((event) =>
+    event?.type === "runner-event"
+    && event.timestamp
+    && /^Captured Codex CLI event /.test(event.message || "")
+  );
 }
 
 function resolveRunDir(runDir) {

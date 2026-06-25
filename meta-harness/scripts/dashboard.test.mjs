@@ -62,6 +62,7 @@ test("dashboard output reader uses bounded tails", (t) => {
 
   assert.equal(output.stdout.truncated, true);
   assert.equal(output.stdout.text, "xxxxxxxxtail");
+  assert.match(output.stdout.displayText, /^\[[^\]]+\] xxxxxxxxtail$/);
 });
 
 test("dashboard artifact reader is scoped to run dir and blocks secret-like paths", (t) => {
@@ -94,8 +95,12 @@ test("dashboard server serves HTML, JSON endpoints, artifact files, and traversa
 
   const html = await (await fetch(server.url)).text();
   assert.match(html, /JARVIS HARNESS RUN/);
-  assert.match(html, /--dashboard-width: 2400px/);
-  assert.match(html, /min-width: var\(--dashboard-width\)/);
+  assert.match(html, /--dashboard-width: max\(100vw, var\(--dashboard-min-width\)\)/);
+  assert.match(html, /min-width: var\(--dashboard-min-width\)/);
+  assert.match(html, /width: 100%/);
+  assert.match(html, /white-space: pre;/);
+  assert.match(html, /overflow: auto;/);
+  assert.doesNotMatch(html, /2400px/);
   assert.doesNotMatch(html, /@media/);
 
   const summary = await (await fetch(new URL("/api/summary", server.url))).json();
@@ -105,6 +110,10 @@ test("dashboard server serves HTML, JSON endpoints, artifact files, and traversa
 
   const output = await (await fetch(new URL("/api/output", server.url))).json();
   assert.match(output.stdout.text, /assistant_message|inspection|command/);
+  assert.match(output.stdout.displayText, /\[[^\]]+\] \{"type":/);
+
+  const favicon = await fetch(new URL("/favicon.ico", server.url));
+  assert.equal(favicon.status, 204);
 
   const artifact = await fetch(new URL("/api/artifact?path=task.md", server.url));
   assert.equal(artifact.status, 200);
@@ -164,11 +173,20 @@ test("dashboard opener reports unsupported platforms without throwing", () => {
 test("dashboard HTML is desktop-only and file-backed", () => {
   const html = renderDashboardHtml();
 
-  assert.match(html, /<meta name="viewport" content="width=2400">/);
-  assert.match(html, /--dashboard-width: 2400px/);
-  assert.match(html, /grid-template-columns: calc\(var\(--dashboard-width\) \* 0\.31\)/);
+  assert.match(html, /<meta name="viewport" content="width=device-width">/);
+  assert.match(html, /--dashboard-min-width: 1500px/);
+  assert.match(html, /--dashboard-width: max\(100vw, var\(--dashboard-min-width\)\)/);
+  assert.match(html, /min-width: var\(--dashboard-min-width\)/);
+  assert.match(html, /width: 100%/);
+  assert.match(html, /grid-template-columns: minmax\(0, 31fr\) minmax\(0, 33fr\) minmax\(0, 36fr\)/);
   assert.match(html, /white-space: normal/);
+  assert.match(html, /#output \{/);
+  assert.match(html, /white-space: pre;/);
+  assert.match(html, /overflow: auto;/);
+  assert.match(html, /displayText/);
   assert.doesNotMatch(html, /text-overflow: ellipsis/);
+  assert.doesNotMatch(html, /grid-template-columns: calc\(var\(--dashboard-width\)/);
+  assert.doesNotMatch(html, /2400px/);
   assert.match(html, /\/api\/summary/);
   assert.match(html, /\/api\/artifact\?path=/);
 });
