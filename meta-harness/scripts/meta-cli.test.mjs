@@ -70,18 +70,21 @@ test("jarvis-harness run, verify, and report work from outside the jarvis repo",
 
   assert.equal(run.status, 0, run.stderr);
   assert.match(run.stdout, /Created task run:/);
-  assert.match(run.stdout, /Runner status: implemented/);
+  assert.match(run.stdout, /Operator status: working/);
+  assert.match(run.stdout, /Runner artifact status: implemented/);
   const runDir = join(repo, ".task-runs", "jarvis-global-flow");
   assert.match(readFileSync(join(runDir, "runner-state.json"), "utf8"), /implemented/);
   assert.equal(readJson(join(runDir, "runner-config.json")).timeouts.totalMs, null);
 
   const verify = runJarvis(["verify", "--run", runDir, "--skip-surfaces", "--command-timeout-ms", "1000"], { cwd });
   assert.equal(verify.status, 2, verify.stderr);
-  assert.match(verify.stdout, /Verification pipeline status: rejected/);
+  assert.match(verify.stdout, /Operator status: repairing/);
+  assert.match(verify.stdout, /Internal verification status: rejected/);
 
   const report = runJarvis(["report", "--run", runDir], { cwd });
   assert.equal(report.status, 0, report.stderr);
-  assert.match(report.stdout, /Decision: rejected/);
+  assert.match(report.stdout, /Operator status: repairing/);
+  assert.match(report.stdout, /Internal policy decision: rejected/);
 });
 
 test("jarvis-harness blocked runs record jarvis-harness resume commands", (t) => {
@@ -130,8 +133,9 @@ test("M8 meta report snapshot for a rejected run shows blocking findings first",
   assert.equal(result.status, 0, result.stderr);
   const output = normalizeReport(result.stdout);
   assert.match(output, /^Findings:\n- \[blocking\] POL-HONESTY-001:/);
-  assert.match(output, /Decision: rejected/);
-  assert.match(output, /Blocking reason: Final report claim automatedVerification cites unknown evidence E\.fake\.missing\./);
+  assert.match(output, /Operator status: repairing/);
+  assert.match(output, /Internal policy decision: rejected/);
+  assert.match(output, /Reason: Final report claim automatedVerification cites unknown evidence E\.fake\.missing\./);
   assert.match(output, /Next action:\n- Agent\/harness repair: fix the evidence\/final-report mismatch/);
 });
 
@@ -150,7 +154,8 @@ test("M8 meta report snapshot for a blocked run shows blocker and next action", 
   assert.equal(result.status, 0, result.stderr);
   const output = normalizeReport(result.stdout);
   assert.match(output, /^Findings:\n- \[blocking\] POL-BLOCKED-001: Runner state is blocked\./);
-  assert.match(output, /Decision: blocked/);
+  assert.match(output, /Operator status: blocked/);
+  assert.match(output, /Internal policy decision: blocked/);
   assert.match(output, /Next action:\n- User\/operator: resolve the blocking condition/);
 });
 
@@ -167,7 +172,8 @@ test("M8 meta run exits loudly and records notification artifact when runner blo
 
   const run = runMeta(["run", "--run", runDir, "--fake", "--scenario", "timeout", "--timeout-ms", "100"]);
   assert.equal(run.status, 3, run.stderr);
-  assert.match(run.stdout, /Runner status: blocked/);
+  assert.match(run.stdout, /Operator status: blocked/);
+  assert.match(run.stdout, /Runner artifact status: blocked/);
   assert.match(run.stderr, /Blocked notification skipped: disabled/);
   const notification = readJson(join(runDir, "blocked-notification.json"));
   assert.equal(notification.status, "skipped");
@@ -183,7 +189,8 @@ test("M8 meta verify records completion notification artifact when policy accept
   const verify = runMeta(["verify", "--run", runDir, "--skip-surfaces", "--command-timeout-ms", "1000"]);
 
   assert.equal(verify.status, 0, verify.stderr);
-  assert.match(verify.stdout, /Verification pipeline status: accepted/);
+  assert.match(verify.stdout, /Operator status: finished/);
+  assert.match(verify.stdout, /Internal verification status: accepted/);
   assert.match(verify.stderr, /Completion notification skipped: disabled/);
   const notification = readJson(join(runDir, "completion-notification.json"));
   assert.equal(notification.status, "skipped");
@@ -315,11 +322,13 @@ test("M8 meta init, fake run, verify, and promote-failure are wired through the 
 
   const run = runMeta(["run", "--run", runDir, "--fake", "--scenario", "success"]);
   assert.equal(run.status, 0, run.stderr);
-  assert.match(run.stdout, /Runner status: implemented/);
+  assert.match(run.stdout, /Operator status: working/);
+  assert.match(run.stdout, /Runner artifact status: implemented/);
 
   const verify = runMeta(["verify", "--run", runDir, "--skip-surfaces", "--command-timeout-ms", "1000"]);
   assert.equal(verify.status, 2, verify.stderr);
-  assert.match(verify.stdout, /Verification pipeline status: rejected/);
+  assert.match(verify.stdout, /Operator status: repairing/);
+  assert.match(verify.stdout, /Internal verification status: rejected/);
   assert.match(verify.stdout, /- policy: rejected/);
 
   const promote = runMeta([
@@ -362,7 +371,8 @@ test("M8 meta run can initialize from repo and task in one command", (t) => {
 
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /Created task run:/);
-  assert.match(result.stdout, /Runner status: implemented/);
+  assert.match(result.stdout, /Operator status: working/);
+  assert.match(result.stdout, /Runner artifact status: implemented/);
   assert.match(result.stdout, /Run dir:/);
   assert.equal(readJson(join(repo, ".task-runs", "m8-combined-run", "runner-config.json")).timeouts.totalMs, null);
   assert.match(readFileSync(join(repo, ".task-runs", "m8-combined-run", "runner-state.json"), "utf8"), /implemented/);
@@ -443,7 +453,8 @@ function valueAfter(flag) {
   ]);
 
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /Runner status: implemented/);
+  assert.match(result.stdout, /Operator status: working/);
+  assert.match(result.stdout, /Runner artifact status: implemented/);
   const runnerConfig = readJson(join(repo, ".task-runs", "m8-codex-args", "runner-config.json"));
   assert.ok(runnerConfig.command.includes("--ignore-user-config"));
   assert.ok(runnerConfig.command.includes("--model"));
@@ -597,8 +608,9 @@ function normalizeReport(output) {
 function acceptedSnapshot() {
   return `Findings:
 - none
-Decision: accepted
-Blocking reason: none
+Operator status: finished
+Internal policy decision: accepted
+Reason: none
 Run: m8-accepted-report
 Task: build a local internal helper with command proof
 Policy rules:

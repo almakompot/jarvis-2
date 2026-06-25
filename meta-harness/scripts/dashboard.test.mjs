@@ -23,7 +23,8 @@ test("dashboard summary renders an initialized pending run with missing-file tol
 
   assert.equal(summary.kind, "meta-harness.dashboard-summary");
   assert.equal(summary.runId, "dashboard-pending");
-  assert.equal(summary.status.overall, "pending");
+  assert.equal(summary.status.overall, "working");
+  assert.equal(summary.status.operatorStatus, "working");
   assert.equal(summary.status.wallClockLimitMs, null);
   assert.ok(summary.requirements.length > 0);
   assert.ok(summary.proofObligations.length > 0);
@@ -31,7 +32,7 @@ test("dashboard summary renders an initialized pending run with missing-file tol
   assert.match(summary.commands.verify, /jarvis-harness verify --run/);
 });
 
-test("dashboard summary reflects accepted, rejected, and blocked policy states", (t) => {
+test("dashboard summary maps internal policy decisions to operator lifecycle states", (t) => {
   const { repo, runDir } = createRun("dashboard-decisions");
   t.after(() => rmSync(repo, { recursive: true, force: true }));
 
@@ -39,17 +40,49 @@ test("dashboard summary reflects accepted, rejected, and blocked policy states",
   const policy = readJson(policyPath);
 
   writeJson(policyPath, { ...policy, decision: "accepted", decisionReason: "accepted for fixture" });
-  assert.equal(buildDashboardSummary({ runDir }).status.overall, "accepted");
+  const accepted = buildDashboardSummary({ runDir });
+  assert.equal(accepted.status.overall, "finished");
+  assert.equal(accepted.status.internalOverall, "accepted");
 
   writeJson(policyPath, { ...policy, decision: "rejected", decisionReason: "fixture reject" });
   const rejected = buildDashboardSummary({ runDir });
-  assert.equal(rejected.status.overall, "rejected");
+  assert.equal(rejected.status.overall, "repairing");
+  assert.equal(rejected.status.internalOverall, "rejected");
   assert.equal(rejected.status.rejectReason, "fixture reject");
+  assert.equal(rejected.status.repairReason, "fixture reject");
 
   writeJson(policyPath, { ...policy, decision: "blocked", decisionReason: "fixture block" });
   const blocked = buildDashboardSummary({ runDir });
   assert.equal(blocked.status.overall, "blocked");
   assert.equal(blocked.status.blockingReason, "fixture block");
+});
+
+test("dashboard summary labels terminal runner state as stopped, not running", (t) => {
+  const { repo, runDir } = createRun("dashboard-terminal-runner");
+  t.after(() => rmSync(repo, { recursive: true, force: true }));
+
+  const runnerPath = join(runDir, "runner-state.json");
+  const runnerState = readJson(runnerPath);
+  writeJson(runnerPath, {
+    ...runnerState,
+    createdAt: "2026-06-25T10:00:00.000Z",
+    updatedAt: "2026-06-25T10:05:00.000Z",
+    status: "rejected",
+    terminalState: {
+      ...runnerState.terminalState,
+      reason: "final-overclaim"
+    }
+  });
+
+  const summary = buildDashboardSummary({ runDir, now: new Date("2026-06-25T10:20:00.000Z") });
+
+  assert.equal(summary.status.overall, "repairing");
+  assert.equal(summary.status.isTerminal, true);
+  assert.equal(summary.status.phase, "stopped: final-overclaim");
+  assert.equal(summary.status.elapsedText, "5m 0s");
+  assert.equal(summary.status.runtimeText, "5m 0s");
+  assert.equal(summary.status.stoppedAgoText, "15m 0s");
+  assert.equal(summary.status.nextTransition, "repair implementation/proof -> rerun verification");
 });
 
 test("dashboard output reader uses bounded tails", (t) => {

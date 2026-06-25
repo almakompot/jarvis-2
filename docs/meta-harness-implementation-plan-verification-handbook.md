@@ -43,7 +43,9 @@ apps/site-gate-extension/README.md
 Write a verification report with this shape:
 
 ```text
-Decision: ACCEPTED | REJECTED | BLOCKED
+Operator status: FINISHED | REPAIRING | BLOCKED
+Internal policy decision: accepted | rejected | blocked
+Reason: ...
 
 Summary:
 - ...
@@ -520,7 +522,9 @@ Use blocked only if:
 Use this final report:
 
 ```text
-Decision: ACCEPTED | REJECTED | BLOCKED
+Operator status: FINISHED | REPAIRING | BLOCKED
+Internal policy decision: accepted | rejected | blocked
+Reason: ...
 
 Word Count:
 - observed:

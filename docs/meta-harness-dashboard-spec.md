@@ -135,11 +135,33 @@ body {
 
 The dashboard should be dense, operational, and information-rich. It must not depend on a magic fixed target width. The dashboard shell must fill the browser width with only a desktop minimum floor. Panel widths should use proportional grid fractions, and vertical spacing should scale with viewport width. Zooming out should increase the available dashboard width and reveal more text. Raw live output must preserve log lines, prefix displayed lines with bracketed timestamps, and scroll horizontally instead of wrapping. Avoid marketing-page styling, oversized hero sections, decorative cards, and mobile rearrangement.
 
+## Terminal State Semantics
+
+The dashboard must not expose `rejected` as a final operator state. Operator-facing status is:
+
+- `working`: a run or verification is still in progress or ready for the next automated step
+- `repairing`: internal runner, verifier, or policy output found repairable issues
+- `blocked`: user/operator input or an external condition is required
+- `finished`: internal policy is accepted
+
+Internal policy `rejected` maps to operator `repairing`. Only `blocked` and `finished` are stop states for the user.
+
+The dashboard must not make a stopped runner attempt look active. For terminal runner artifact states (`implemented`, `rejected`, `blocked`, `interrupted`) it should show:
+
+- terminal phase text such as `stopped: final-overclaim`
+- runtime from `runner-state.createdAt` to `runner-state.updatedAt`
+- stopped-age from `runner-state.updatedAt` to dashboard render time
+- next action based on the terminal reason, not generic active-run verification text
+
+`elapsed` alone is ambiguous after a run stops and must not be used as the only time label.
+
+The runner must also distinguish overclaim from explicit non-completion. The protocol-approved final wording `Implemented, but not fully verified.` is not an overclaim and must not reject a run by itself. Positive claims such as `Done`, `fully verified`, `verified and accepted`, or `all requirements pass` remain repair-triggering internal failures before policy acceptance.
+
 ## ASCII Layout
 
 ```text
 +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| JARVIS HARNESS RUN                                                                                                           RUNNING  00:18:42  no timeout     |
+| JARVIS HARNESS RUN                                                                                                           WORKING  00:18:42  no timeout     |
 | Repo: statement-tracker        Branch: feature/statement-db-mvp        Run: 20260625T095410Z-build-the-one-week-statement-tracker-app-mvp-the                 |
 | Task: Build the one-week Statement Tracker app MVP                                                                                                             |
 | Run dir: /Users/levente/Documents/Jarvis/Projects/statement-tracker/.task-runs/20260625T095410Z-build-the-one-week-statement-tracker-app-mvp-the              |
@@ -174,10 +196,11 @@ The dashboard should be dense, operational, and information-rich. It must not de
 +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
 | DECISION / TRUST STATE                                                                                                                                          |
 |                                                                                                                                                                |
-| Runner status: running                                                                                                                                          |
+| Operator status: working                                                                                                                                        |
+| Internal runner/policy status: running / pending                                                                                                                |
 | Verification status: pending                                                                                                                                    |
 | Policy decision: not-run                                                                                                                                        |
-| Blocking reason: none                                                                                                                                           |
+| Reason: none                                                                                                                                                    |
 | Reject reason: none yet                                                                                                                                         |
 | Current risk: no browser proof yet; timestamp import behavior not independently verified                                                                         |
 | Next expected transition: implementation exits -> verify command proof -> surface smoke -> verifier -> policy                                                    |

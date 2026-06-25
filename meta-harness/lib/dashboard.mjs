@@ -257,10 +257,10 @@ export function renderDashboardHtml() {
       font-weight: 700;
       text-transform: uppercase;
     }
-    .status.accepted, .pass { color: var(--pass); }
-    .status.rejected, .fail { color: var(--fail); }
+    .status.finished, .status.accepted, .pass { color: var(--pass); }
+    .status.repairing, .status.working, .status.pending, .pending { color: var(--pending); }
     .status.blocked, .warn { color: var(--warn); }
-    .status.pending, .pending { color: var(--pending); }
+    .fail { color: var(--fail); }
     .command-strip {
       padding: var(--space-1) var(--space-3);
       border-bottom: 1px solid var(--line);
@@ -408,8 +408,8 @@ export function renderDashboardHtml() {
     const refreshMs = 1500;
     const statusEl = document.getElementById("overall-status");
     const text = (value) => value == null || value === "" ? "none" : String(value);
-    const cls = (status) => ["accepted", "passed", "implemented"].includes(status) ? "pass"
-      : ["rejected", "failed"].includes(status) ? "fail"
+    const cls = (status) => ["accepted", "passed", "implemented", "finished"].includes(status) ? "pass"
+      : ["failed"].includes(status) ? "fail"
       : ["blocked", "interrupted"].includes(status) ? "warn"
       : "pending";
     function setText(id, value) { document.getElementById(id).textContent = text(value); }
@@ -465,7 +465,7 @@ export function renderDashboardHtml() {
       const s = summary.status || {};
       statusEl.textContent = s.overall || "pending";
       statusEl.className = "status " + (s.overall || "pending");
-      setText("elapsed", "elapsed " + text(s.elapsedText));
+      setText("elapsed", s.isTerminal ? "stopped " + text(s.stoppedAgoText) + " ago; runtime " + text(s.runtimeText) : "running " + text(s.elapsedText));
       setText("timeout", "wall-clock limit " + (s.wallClockLimitMs == null ? "none" : s.wallClockLimitMs + "ms"));
       setText("task", "Task: " + text(summary.task && summary.task.title));
       setText("repo", "Repo: " + text(summary.repo && summary.repo.name) + "  Branch: " + text(summary.repo && summary.repo.branch) + "  Run: " + text(summary.runId));
@@ -491,9 +491,10 @@ export function renderDashboardHtml() {
         ["Runner status", s.runner],
         ["Verification status", s.verification],
         ["Verifier status", s.verifier],
-        ["Policy decision", s.policy],
+        ["Operator status", s.operatorStatus],
+        ["Internal policy decision", s.policy],
         ["Blocking reason", s.blockingReason],
-        ["Reject reason", s.rejectReason],
+        ["Repair reason", s.repairReason],
         ["Current risk", s.currentRisk],
         ["Next expected transition", s.nextTransition]
       ]);
@@ -638,23 +639,35 @@ function summarizeStatus({ now, runnerConfig, runnerState, verification, verifie
   const verificationStatus = verification?.status || "pending";
   const verifier = verifierReport?.recommendation || verifierReport?.status || "pending";
   const policy = policyDecision?.decision || "not-run";
-  const overall = policy !== "not-run" && policy !== "pending"
+  const internalOverall = policy !== "not-run" && policy !== "pending"
     ? policy
     : runner === "implemented" && verificationStatus === "pending"
       ? "implemented"
       : runner;
+  const operatorStatus = operatorStatusFor({ runner, verificationStatus, verifier, policy });
   const startedAt = runnerState?.createdAt || spec?.createdAt || finalReport?.createdAt || latestEvent?.timestamp || now.toISOString();
-  const elapsedMs = Math.max(0, now.getTime() - Date.parse(startedAt || now.toISOString()));
+  const stoppedAt = terminalRunnerStatus(runner) ? runnerState?.updatedAt || latestEvent?.timestamp || null : null;
+  const elapsedMs = elapsedMilliseconds({ now, startedAt, stoppedAt });
+  const stoppedAgoMs = stoppedAt ? Math.max(0, now.getTime() - Date.parse(stoppedAt)) : null;
   const latestCommandStatus = latestCommand ? commandStatus(latestCommand) : null;
   return {
-    overall,
+    overall: operatorStatus,
+    operatorStatus,
+    internalOverall,
     runner,
     verification: verificationStatus,
     verifier,
     policy,
-    phase: latestEvent?.phase || latestCommand?.phase || runnerState?.terminalState?.reason || "pending",
+    phase: terminalRunnerStatus(runner)
+      ? `stopped: ${runnerState?.terminalState?.reason || runner}`
+      : latestEvent?.phase || latestCommand?.phase || runnerState?.terminalState?.reason || "pending",
+    isTerminal: terminalRunnerStatus(runner) || terminalPolicyStatus(policy),
+    startedAt,
+    stoppedAt,
     elapsedMs,
     elapsedText: formatDuration(elapsedMs),
+    runtimeText: formatDuration(elapsedMs),
+    stoppedAgoText: stoppedAgoMs == null ? null : formatDuration(stoppedAgoMs),
     wallClockLimitMs: runnerConfig?.timeouts?.totalMs ?? null,
     blockingReason: policyDecision?.decision === "blocked"
       ? policyDecision.decisionReason
@@ -666,8 +679,9 @@ function summarizeStatus({ now, runnerConfig, runnerState, verification, verifie
       : runner === "rejected"
         ? runnerState?.terminalState?.reason || "runner rejected"
         : null,
+    repairReason: repairReasonFor({ runner, policyDecision, runnerState, verifierReport }),
     currentRisk: finalReport?.residualRisk?.[0] || policyDecision?.residualRisk?.[0] || missingRisk({ verificationStatus, policy, latestCommandStatus }),
-    nextTransition: nextTransition({ runner, verificationStatus, policy })
+    nextTransition: nextTransition({ runner, verificationStatus, policy, operatorStatus })
   };
 }
 
@@ -800,14 +814,14 @@ function missingRisk({ verificationStatus, policy, latestCommandStatus }) {
   return "policy acceptance pending";
 }
 
-function nextTransition({ runner, verificationStatus, policy }) {
-  if (policy === "accepted") {
+function nextTransition({ runner, verificationStatus, policy, operatorStatus }) {
+  if (operatorStatus === "finished") {
     return "none";
   }
-  if (policy === "blocked") {
+  if (operatorStatus === "blocked") {
     return "resolve blocker -> resume run or verification";
   }
-  if (policy === "rejected") {
+  if (operatorStatus === "repairing") {
     return "repair implementation/proof -> rerun verification";
   }
   if (runner === "pending") {
@@ -816,10 +830,59 @@ function nextTransition({ runner, verificationStatus, policy }) {
   if (runner === "implemented" && verificationStatus === "pending") {
     return "verify command proof -> surface proof -> verifier -> policy";
   }
+  if (runner === "rejected") {
+    return "repair runner failure -> rerun implementation";
+  }
+  if (runner === "blocked") {
+    return "resolve blocker -> resume run";
+  }
+  if (runner === "interrupted") {
+    return "resume run";
+  }
   if (verificationStatus !== "passed") {
     return "complete verification proof";
   }
   return "run verifier and policy";
+}
+
+function operatorStatusFor({ runner, verificationStatus, verifier, policy }) {
+  if (policy === "accepted") {
+    return "finished";
+  }
+  if (policy === "blocked" || runner === "blocked" || verificationStatus === "blocked" || verifier === "blocked") {
+    return "blocked";
+  }
+  if (policy === "rejected" || runner === "rejected" || verificationStatus === "failed" || verifier === "failed") {
+    return "repairing";
+  }
+  return "working";
+}
+
+function repairReasonFor({ runner, policyDecision, runnerState, verifierReport }) {
+  if (policyDecision?.decision === "rejected") {
+    return policyDecision.decisionReason || "policy rejected current artifacts";
+  }
+  if (runner === "rejected") {
+    return runnerState?.terminalState?.reason || runnerState?.failures?.[0]?.message || "runner rejected current attempt";
+  }
+  if (verifierReport?.status === "failed" || verifierReport?.recommendation === "failed") {
+    return verifierReport.summary || "verifier found repairable issues";
+  }
+  return null;
+}
+
+function terminalRunnerStatus(status) {
+  return ["implemented", "rejected", "blocked", "interrupted"].includes(status);
+}
+
+function terminalPolicyStatus(status) {
+  return ["accepted", "rejected", "blocked"].includes(status);
+}
+
+function elapsedMilliseconds({ now, startedAt, stoppedAt }) {
+  const start = Date.parse(startedAt || now.toISOString());
+  const end = stoppedAt ? Date.parse(stoppedAt) : now.getTime();
+  return Math.max(0, end - start);
 }
 
 function standardArtifacts(runDir) {

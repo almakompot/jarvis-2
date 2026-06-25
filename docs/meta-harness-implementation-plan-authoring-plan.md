@@ -466,8 +466,9 @@ Include:
 Define human report format:
 
 ```text
-Decision: rejected
-Blocking reason: R4 has no user-smoke evidence
+Operator status: repairing
+Internal policy decision: rejected
+Reason: R4 has no user-smoke evidence
 Passed commands: ...
 Failed commands: ...
 Evidence: ...

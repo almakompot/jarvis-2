@@ -117,13 +117,19 @@ The dashboard opens in the default browser by default. Use `--no-open` when runn
 
 ## Decision Rules
 
-Do not report completion from memory or assistant prose. Use the policy decision:
+Do not report completion from memory or assistant prose. Use the policy decision, but translate it to the operator lifecycle:
+
+- `finished`: internal policy is `accepted`.
+- `repairing`: internal policy is `rejected`; keep fixing implementation, proof, or evidence by default.
+- `blocked`: internal policy is `blocked`; user/operator input or an external condition is required.
+
+Internal policy meanings:
 
 - `accepted`: required proof passed, verifier did not find blocking or major issues, and residual risk is recorded.
-- `rejected`: current artifacts do not support the completion claim. The default next actor is the agent/harness repair loop: fix implementation, proof, or evidence, then rerun verification and policy, or start a child run.
+- `rejected`: current artifacts do not support the completion claim. This is not a user-facing terminal state.
 - `blocked`: a real external condition prevents proof, such as missing credentials, unsafe approval boundary, unavailable target environment, or required live access. This is the user/operator-needed state.
 
-Rejected is repairable by default. Do not notify the user by default unless retries repeat, scope changes, or the safe next action is unclear. Blocked is the state that asks the user/operator for input. If blocked, name the condition and evidence. Do not use blocked for inconvenience. Blocked `run` and `verify` commands exit `3`, show a timed macOS error popup when available, and write `blocked-notification.json` with the resume command.
+Internal policy `rejected` is repairable by default and should be presented as operator `repairing`. Do not notify the user by default unless retries repeat, scope changes, or the safe next action is unclear. Blocked is the state that asks the user/operator for input. If blocked, name the condition and evidence. Do not use blocked for inconvenience. Blocked `run` and `verify` commands exit `3`, show a timed macOS error popup when available, and write `blocked-notification.json` with the resume command.
 
 Accepted `meta verify` runs exit `0`, show a timed macOS completion popup when available, and write `completion-notification.json` with the report command.
 

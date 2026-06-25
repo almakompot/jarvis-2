@@ -237,6 +237,25 @@ test("real Codex wrapper rejects final overclaim from Codex output", async (t) =
   assertStructuralValidation(runDir);
 });
 
+test("real Codex wrapper does not reject explicit not-fully-verified final output", async (t) => {
+  const fakeCli = createFakeCodexCli(t);
+  const { repo, runDir } = createRun("codex-not-fully-verified");
+  t.after(() => rmSync(repo, { recursive: true, force: true }));
+
+  const result = await runCodexCli({
+    runDir,
+    executable: process.execPath,
+    executableArgs: [fakeCli],
+    extraArgs: ["--fake-scenario", "not-fully-verified"],
+    totalTimeoutMs: 1000
+  });
+
+  assert.equal(result.status, "implemented");
+  assert.equal(result.runnerState.failures.length, 0);
+  assert.ok(result.runnerState.warnings.length === 0);
+  assertStructuralValidation(runDir);
+});
+
 function createRun(runId) {
   const repo = mkdtempSync(join(tmpdir(), "meta-harness-codex-runner-"));
   mkdirSync(join(repo, "src"), { recursive: true });
@@ -302,6 +321,16 @@ process.stdin.on("end", async () => {
   if (scenario === "overclaim") {
     writeLast("Done. All requirements are verified and accepted.");
     emit({ type: "agent_message", message: "Done. All requirements are verified and accepted." });
+    return;
+  }
+
+  if (scenario === "not-fully-verified") {
+    const target = join(repoPath, "src", "real-codex-runner.js");
+    emit({ type: "item.completed", item: { id: "fake_cmd_1", type: "command_execution", command: "ls package.json", aggregated_output: "package.json\\n", exit_code: 0, status: "completed" } });
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, "export const realCodexRunner = true;\\n");
+    writeLast("Implemented, but not fully verified.");
+    emit({ type: "agent_message", message: "Implemented, but not fully verified." });
     return;
   }
 

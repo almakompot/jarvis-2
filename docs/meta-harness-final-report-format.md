@@ -26,8 +26,9 @@ The text report must use this order:
 
 ```text
 Findings:
-Decision:
-Blocking reason:
+Operator status:
+Internal policy decision:
+Reason:
 Run:
 Task:
 Policy rules:
@@ -39,15 +40,17 @@ Residual risk:
 Next action:
 ```
 
-Findings come first so rejected and blocked runs are not buried below useful-looking summaries.
+Findings come first so repairing and blocked runs are not buried below useful-looking summaries.
 
 ## Section Meaning
 
 `Findings` lists active policy rules first. If no active policy rule exists, it lists blocking or major verifier findings. Accepted runs may show `none`.
 
-`Decision` is copied from `policy-decision.json`. Valid values are `accepted`, `rejected`, or `blocked`.
+`Operator status` is the user-facing lifecycle state. Valid values are `working`, `repairing`, `blocked`, or `finished`. `finished` maps to internal policy `accepted`; `repairing` maps to internal policy `rejected`; `blocked` maps to internal policy `blocked`.
 
-`Blocking reason` is `none` only for accepted runs. Rejected and blocked runs use the policy decision reason.
+`Internal policy decision` is copied from `policy-decision.json`. Valid values are `accepted`, `rejected`, or `blocked`. `rejected` is internal repair signal, not a user-facing terminal state.
+
+`Reason` is `none` only for accepted runs. Repairing and blocked runs use the policy decision reason.
 
 `Policy rules` lists active non-overridden rules. Overridden rules remain in `policy-decision.json` but should not be presented as active blockers.
 
@@ -59,7 +62,7 @@ Findings come first so rejected and blocked runs are not buried below useful-loo
 
 `Residual risk` comes from `final-report.json`. Accepted nontrivial runs must keep risk visible.
 
-`Next action` names the next actor and action. For `accepted`, archive the artifacts and hand off residual risk. For `rejected`, the default actor is the agent/harness repair loop unless the report says otherwise. For `blocked`, the next actor is the user/operator because an external condition or approval is required.
+`Next action` names the next actor and action. For `finished`, archive the artifacts and hand off residual risk. For `repairing`, the default actor is the agent/harness repair loop unless the report says otherwise. For `blocked`, the next actor is the user/operator because an external condition or approval is required.
 
 Blocked CLI commands exit `3`. On macOS they show a timed error popup and write `blocked-notification.json` with the blocker and resume command.
 
@@ -86,8 +89,9 @@ The HTML report must include evidence links and the text report content. It must
 ```text
 Findings:
 - none
-Decision: accepted
-Blocking reason: none
+Operator status: finished
+Internal policy decision: accepted
+Reason: none
 Policy rules:
 - none active
 Passed commands:
@@ -104,13 +108,14 @@ Next action:
 - Archive the run artifacts and keep residual risk visible in handoff notes.
 ```
 
-## Rejected Example
+## Repairing Example
 
 ```text
 Findings:
 - [blocking] POL-UI-001: web-ui tasks require passing runnable-surface evidence.
-Decision: rejected
-Blocking reason: web-ui tasks require passing runnable-surface evidence.
+Operator status: repairing
+Internal policy decision: rejected
+Reason: web-ui tasks require passing runnable-surface evidence.
 Missing proof:
 - P3 pending: Browser smoke proves the requested reset behavior. (browser-smoke)
 Next action:
@@ -122,8 +127,9 @@ Next action:
 ```text
 Findings:
 - [blocking] POL-BLOCKED-001: Runner state is blocked.
-Decision: blocked
-Blocking reason: Runner state is blocked.
+Operator status: blocked
+Internal policy decision: blocked
+Reason: Runner state is blocked.
 Next action:
 - User/operator: resolve the blocking condition, then run `meta verify --run <run-dir>` again.
 ```
@@ -132,8 +138,8 @@ Next action:
 
 When reporting to a user after a meta-harness run:
 
-- Say `accepted`, `rejected`, or `blocked`.
+- Say `finished`, `repairing`, or `blocked` as the operator status.
 - Cite the run folder and the report path.
 - Name failed commands or missing proof before describing useful work.
-- For accepted runs, include residual risk.
+- For finished runs, include residual risk.
 - Do not claim completion if `policy-decision.json` is not accepted.

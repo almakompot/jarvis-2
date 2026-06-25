@@ -88,7 +88,7 @@ const docRequirements = [
       "npm run check",
       "git diff --check",
       "200-500 total runs",
-      "Rejected is repairable by default",
+      "internal policy is `rejected`; keep fixing",
       "Blocked is the state that asks the user/operator for input",
       "no default wall-clock timeout",
       "docs/meta-harness-dashboard-spec.md"
@@ -98,8 +98,9 @@ const docRequirements = [
     path: "docs/meta-harness-final-report-format.md",
     fragments: [
       "Findings:",
-      "Decision:",
-      "Blocking reason:",
+      "Operator status:",
+      "Internal policy decision:",
+      "Reason:",
       "Policy rules:",
       "Passed commands:",
       "Failed commands:",
@@ -110,7 +111,7 @@ const docRequirements = [
       "policy-decision.json",
       "verifier-report.json",
       "final-report.json",
-      "For `rejected`, the default actor is the agent/harness repair loop",
+      "For `repairing`, the default actor is the agent/harness repair loop",
       "For `blocked`, the next actor is the user/operator"
     ]
   },
@@ -141,7 +142,8 @@ const docRequirements = [
       "A/B Evaluation Harness",
       "Final Report Format",
       "npm run meta:final-audit",
-      "agent/harness repair action",
+      "Operator lifecycle",
+      "repairing",
       "user/operator input needed",
       "blocked-notification.json",
       "meta run` exits `3`",

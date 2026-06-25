@@ -1,6 +1,6 @@
 # Meta-Harness
 
-Meta-Harness is a local Codex CLI delivery gate. It turns a raw feature request into a run folder, captures implementation and proof artifacts, independently verifies those artifacts, and writes a final `accepted`, `rejected`, or `blocked` policy decision.
+Meta-Harness is a local Codex CLI delivery gate. It turns a raw feature request into a run folder, captures implementation and proof artifacts, independently verifies those artifacts, and writes an internal `accepted`, `rejected`, or `blocked` policy decision. The user-facing lifecycle is stricter: `accepted` means `finished`, `rejected` means `repairing`, and `blocked` means user/operator input is needed.
 
 Use it when "done" should mean the requested surface was exercised and the evidence supports the claim.
 
@@ -74,10 +74,16 @@ jarvis-harness run --repo /path/to/repo --task "build X" --codex-arg --ignore-us
 
 The report is readable, but the JSON artifacts are authoritative. Do not report completion unless `policy-decision.json` says `accepted`.
 
-Decision meanings:
+Operator lifecycle:
+
+- `finished`: policy accepted. The requested proof passed and the run can be reported as complete.
+- `repairing`: current artifacts do not support completion, but the agent/harness should keep fixing implementation, proof, or evidence. This is not a user-needed state.
+- `blocked`: an external condition prevents proof or progress. This is the user/operator input needed state.
+
+Internal policy decision meanings:
 
 - `accepted`: required proof passed, verifier found no blocking or major issues, and residual risk is recorded.
-- `rejected`: artifacts do not support the completion claim. The default next step is an agent/harness repair action: fix implementation, proof, or evidence, then rerun verification and policy.
+- `rejected`: artifacts do not support the completion claim. Product surfaces must map this to `repairing`, not a terminal user state.
 - `blocked`: an external condition prevents proof or progress. This is the user/operator input needed state. On macOS, blocked `run` and `verify` commands show a timed error popup and write `blocked-notification.json`.
 
 When `meta verify` accepts a run, macOS shows a timed completion popup and writes `completion-notification.json`.
@@ -92,7 +98,7 @@ Use the `jarvis-harness` CLI. If missing, install it from /Users/levente/Documen
 Target repo: /path/to/repo
 Task: <paste the exact task>
 Do not claim done unless policy-decision.json is accepted.
-If rejected, repair and rerun verification by default.
+If policy is rejected, treat it as repairing: keep fixing implementation, proof, or evidence and rerun verification by default.
 If blocked, name the external condition and what user/operator input is needed.
 ```
 
@@ -188,8 +194,9 @@ Text reports render these sections in order:
 
 ```text
 Findings:
-Decision:
-Blocking reason:
+Operator status:
+Internal policy decision:
+Reason:
 Run:
 Task:
 Policy rules:
@@ -203,9 +210,9 @@ Next action:
 
 `meta report --format html` writes `html-report/index.html` with links back to evidence files.
 
-## Rejected And Blocked Runs
+## Repairing And Blocked Runs
 
-Rejected runs are repair work by default:
+Internal `rejected` decisions are repair work by default. They should appear to the operator as `repairing`, not as a terminal product state:
 
 1. Read `Next action` in the report.
 2. Fix the implementation, proof plan, evidence, or final-report mismatch.

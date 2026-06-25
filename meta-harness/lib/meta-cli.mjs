@@ -64,7 +64,8 @@ export async function runMetaCli({
         writeLine(stdout, `Run id: ${initialized.runId}`);
       }
       const result = await runMetaCommand(parsed);
-      writeLine(stdout, `Runner status: ${result.status}`);
+      writeLine(stdout, `Operator status: ${operatorStatusForRun(result.status)}`);
+      writeLine(stdout, `Runner artifact status: ${result.status}`);
       writeLine(stdout, `Run dir: ${result.runDir}`);
       if (result.status === "blocked") {
         emitBlockedNotification({
@@ -82,7 +83,8 @@ export async function runMetaCli({
     if (command === "verify") {
       const parsed = parseVerifyArgs(args.rest);
       const result = await runVerifyPipeline(parsed);
-      writeLine(stdout, `Verification pipeline status: ${result.status}`);
+      writeLine(stdout, `Operator status: ${operatorStatusForPolicy(result.status)}`);
+      writeLine(stdout, `Internal verification status: ${result.status}`);
       writeLine(stdout, `Run dir: ${result.runDir}`);
       for (const step of result.steps) {
         writeLine(stdout, `- ${step.name}: ${step.status} (${step.count})`);
@@ -289,6 +291,29 @@ function blockedVerifyReason(result) {
 function completionVerifyReason(result) {
   return result.policy?.decisionReason
     || "Policy accepted. Required proof passed and residual risk is recorded.";
+}
+
+function operatorStatusForRun(status) {
+  if (status === "blocked") {
+    return "blocked";
+  }
+  if (status === "rejected") {
+    return "repairing";
+  }
+  return "working";
+}
+
+function operatorStatusForPolicy(status) {
+  if (status === "accepted") {
+    return "finished";
+  }
+  if (status === "blocked") {
+    return "blocked";
+  }
+  if (status === "rejected") {
+    return "repairing";
+  }
+  return "working";
 }
 
 function parseInitArgs(argv, commandName) {

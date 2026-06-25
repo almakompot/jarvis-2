@@ -879,11 +879,17 @@ function buildRunnerState({ state, status, terminal, timedOut, interrupted, stdo
 }
 
 function detectFinalOverclaim(content) {
-  return /\bdone\b/i.test(content)
-    || /\bfully verified\b/i.test(content)
-    || /\bverified and accepted\b/i.test(content)
-    || /\ball requirements (?:are )?(?:verified|accepted|pass|passed|satisfied|complete)\b/i.test(content)
-    || /\ball tests (?:pass|passed)\b/i.test(content);
+  const text = String(content || "");
+  const withoutNegatedClaims = text
+    .replace(/\b(?:not|isn['’]?t|wasn['’]?t|cannot be|can't be|not yet)\s+fully verified\b/gi, "")
+    .replace(/\b(?:not|isn['’]?t|wasn['’]?t|cannot be|can't be|not yet)\s+verified(?:\s+and\s+accepted)?\b/gi, "")
+    .replace(/\b(?:not|isn['’]?t|wasn['’]?t|cannot be|can't be|not yet)\s+accepted\b/gi, "")
+    .replace(/\b(?:not|isn['’]?t|wasn['’]?t|cannot be|can't be|not yet)\s+complete\b/gi, "");
+  return /\bdone\b/i.test(withoutNegatedClaims)
+    || /\bfully verified\b/i.test(withoutNegatedClaims)
+    || /\bverified and accepted\b/i.test(withoutNegatedClaims)
+    || /\ball requirements (?:are )?(?:verified|accepted|pass|passed|satisfied|complete)\b/i.test(withoutNegatedClaims)
+    || /\ball tests (?:pass|passed)\b/i.test(withoutNegatedClaims);
 }
 
 function terminalReason({ status, timedOut, interrupted, failures }) {

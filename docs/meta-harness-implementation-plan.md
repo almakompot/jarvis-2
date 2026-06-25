@@ -77,8 +77,9 @@ The policy engine reads M5 verification output, M6 verifier findings, and M7 fai
 The report surface then renders a human result:
 
 ```text
-Decision: rejected
-Blocking reason: R4 has no user-smoke evidence.
+Operator status: repairing
+Internal policy decision: rejected
+Reason: R4 has no user-smoke evidence.
 Passed commands: pnpm run test
 Failed commands: none
 Missing evidence: browser smoke for reset action
@@ -744,8 +745,9 @@ meta rerun --from .task-runs/<id>
 The human report should be concise and evidence-first:
 
 ```text
-Decision: rejected
-Blocking reason: R4 has no user-smoke evidence.
+Operator status: repairing
+Internal policy decision: rejected
+Reason: R4 has no user-smoke evidence.
 Passed commands:
 - C1 pnpm run test
 Failed commands:

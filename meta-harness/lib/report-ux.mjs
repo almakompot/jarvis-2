@@ -222,11 +222,13 @@ function renderTextReport(state) {
   const evidence = evidenceItems(state);
   const residualRisk = residualRiskItems(state);
   const nextActions = nextActionsFor({ state, activeRules, missingProof });
+  const operatorStatus = operatorStatusForPolicy(state.policyDecision.decision);
   return [
     "Findings:",
     ...bulletLines(findings.map(formatFinding), "none"),
-    `Decision: ${state.policyDecision.decision}`,
-    `Blocking reason: ${state.policyDecision.decision === "accepted" ? "none" : state.policyDecision.decisionReason || "see findings"}`,
+    `Operator status: ${operatorStatus}`,
+    `Internal policy decision: ${state.policyDecision.decision}`,
+    `Reason: ${state.policyDecision.decision === "accepted" ? "none" : state.policyDecision.decisionReason || "see findings"}`,
     `Run: ${state.runId}`,
     `Task: ${state.spec.task?.title || state.spec.task?.summary || state.spec.task?.raw || "(unknown)"}`,
     "Policy rules:",
@@ -267,7 +269,8 @@ function renderHtmlReport(state) {
 </head>
 <body>
   <h1>Meta Harness Report: ${htmlEscape(state.runId)}</h1>
-  <p><strong>Decision:</strong> ${htmlEscape(state.policyDecision.decision)}</p>
+  <p><strong>Operator status:</strong> ${htmlEscape(operatorStatusForPolicy(state.policyDecision.decision))}</p>
+  <p><strong>Internal policy decision:</strong> ${htmlEscape(state.policyDecision.decision)}</p>
   <h2>Evidence Links</h2>
   <ul>
 ${evidenceLinks}
@@ -281,6 +284,19 @@ ${evidenceLinks}
 
 function activePolicyRules(state) {
   return (state.policyDecision.blockingRules || []).filter((rule) => !rule.overridden);
+}
+
+function operatorStatusForPolicy(decision) {
+  if (decision === "accepted") {
+    return "finished";
+  }
+  if (decision === "blocked") {
+    return "blocked";
+  }
+  if (decision === "rejected") {
+    return "repairing";
+  }
+  return "working";
 }
 
 function reportFindings(state) {

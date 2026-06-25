@@ -552,7 +552,7 @@ function renderPromotedReadme({ corpusCase, policyDecision, verifierReport }) {
 This is a promoted failure-corpus intake skeleton.
 
 - Source run: ${policyDecision.runId}
-- Decision: ${policyDecision.decision}
+- Internal policy decision: ${policyDecision.decision}
 - Privacy: ${corpusCase.privacy.classification}
 - Sanitized: ${corpusCase.privacy.sanitized}
 
