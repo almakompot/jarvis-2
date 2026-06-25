@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { buildCodexRunnerPrompt, detectCodexCli, runCodexCli } from "../lib/codex-runner.mjs";
+import { buildCodexRunnerPrompt, codexDefaultArgsFromEnv, detectCodexCli, runCodexCli } from "../lib/codex-runner.mjs";
 import { initTaskRun, validateTaskRunDir } from "../lib/task-packet.mjs";
 
 test("real Codex wrapper builds prompt from the frozen task packet", (t) => {
@@ -32,6 +32,72 @@ test("real Codex wrapper detects supported CLI flags", (t) => {
   assert.equal(info.supports.json, true);
   assert.equal(info.supports.outputLastMessage, true);
   assert.equal(info.supports.ephemeral, true);
+});
+
+test("real Codex wrapper builds model defaults from environment", () => {
+  assert.deepEqual(codexDefaultArgsFromEnv({}), [
+    "--ignore-user-config",
+    "--model",
+    "gpt-5.5",
+    "-c",
+    'model_reasoning_effort="high"'
+  ]);
+  assert.deepEqual(
+    codexDefaultArgsFromEnv({
+      META_HARNESS_CODEX_MODEL: "gpt-custom",
+      META_HARNESS_CODEX_REASONING_EFFORT: "medium",
+      META_HARNESS_CODEX_IGNORE_USER_CONFIG: "0"
+    }),
+    ["--model", "gpt-custom", "-c", 'model_reasoning_effort="medium"']
+  );
+});
+
+test("real Codex wrapper injects env model defaults into runner command", async (t) => {
+  const fakeCli = createFakeCodexCli(t);
+  const { repo, runDir } = createRun("codex-env-defaults");
+  t.after(() => rmSync(repo, { recursive: true, force: true }));
+
+  const result = await runCodexCli({
+    runDir,
+    executable: process.execPath,
+    executableArgs: [fakeCli],
+    env: {
+      META_HARNESS_CODEX_MODEL: "gpt-env",
+      META_HARNESS_CODEX_REASONING_EFFORT: "high"
+    },
+    totalTimeoutMs: 1000
+  });
+
+  assert.equal(result.status, "implemented");
+  const runnerConfig = readJson(join(runDir, "runner-config.json"));
+  assert.ok(runnerConfig.command.includes("--ignore-user-config"));
+  assert.ok(runnerConfig.command.includes("--model"));
+  assert.ok(runnerConfig.command.includes("gpt-env"));
+  assert.ok(runnerConfig.command.includes('model_reasoning_effort="high"'));
+});
+
+test("explicit Codex args override env model defaults", async (t) => {
+  const fakeCli = createFakeCodexCli(t);
+  const { repo, runDir } = createRun("codex-explicit-model");
+  t.after(() => rmSync(repo, { recursive: true, force: true }));
+
+  const result = await runCodexCli({
+    runDir,
+    executable: process.execPath,
+    executableArgs: [fakeCli],
+    env: {
+      META_HARNESS_CODEX_MODEL: "gpt-env",
+      META_HARNESS_CODEX_REASONING_EFFORT: "high"
+    },
+    extraArgs: ["--model", "gpt-explicit", "-c", 'model_reasoning_effort="medium"'],
+    totalTimeoutMs: 1000
+  });
+
+  assert.equal(result.status, "implemented");
+  const command = readJson(join(runDir, "runner-config.json")).command;
+  assert.ok(command.includes("gpt-explicit"));
+  assert.ok(command.includes('model_reasoning_effort="medium"'));
+  assert.equal(command.includes("gpt-env"), false);
 });
 
 test("real Codex wrapper captures process output, transcript, diff, changed files, and runner state", async (t) => {

@@ -20,6 +20,8 @@ import {
 
 const moduleDir = dirname(fileURLToPath(import.meta.url));
 const harnessRoot = resolve(moduleDir, "../..");
+const defaultCodexModel = "gpt-5.5";
+const defaultCodexReasoningEffort = "high";
 
 export function buildCodexRunnerPrompt({ runDir, dryRun = false }) {
   const absoluteRunDir = resolve(runDir);
@@ -163,7 +165,8 @@ export async function runCodexCli({
   sandbox = "workspace-write",
   dryRun = false,
   totalTimeoutMs = 120000,
-  extraArgs = []
+  extraArgs = [],
+  env = process.env
 }) {
   const absoluteRunDir = resolve(runDir);
   const repoProfile = readJson(join(absoluteRunDir, "repo-profile.json"));
@@ -214,7 +217,8 @@ export async function runCodexCli({
     stdoutPath,
     lastMessagePath,
     cliInfo,
-    extraArgs
+    extraArgs,
+    env
   });
 
   writeRunnerConfig({
@@ -410,7 +414,47 @@ export async function runCodexCli({
   };
 }
 
-function buildCodexExecCommand({ executable, executableArgs, repoPath, sandbox, lastMessagePath, cliInfo, extraArgs }) {
+export function codexDefaultArgsFromEnv(env = process.env) {
+  const args = [];
+  const model = env.META_HARNESS_CODEX_MODEL || defaultCodexModel;
+  const reasoningEffort = env.META_HARNESS_CODEX_REASONING_EFFORT || defaultCodexReasoningEffort;
+  const ignoreUserConfig = env.META_HARNESS_CODEX_IGNORE_USER_CONFIG ?? "1";
+
+  if (ignoreUserConfig !== "0") {
+    args.push("--ignore-user-config");
+  }
+  if (model) {
+    args.push("--model", model);
+  }
+  if (reasoningEffort) {
+    args.push("-c", `model_reasoning_effort="${reasoningEffort}"`);
+  }
+  return args;
+}
+
+function mergedCodexArgs({ env, extraArgs }) {
+  const defaults = codexDefaultArgsFromEnv(env);
+  const hasModel = extraArgs.some((arg) => arg === "--model" || arg === "-m");
+  const hasReasoningEffort = extraArgs.some((arg) => arg.includes("model_reasoning_effort"));
+  const hasIgnoreUserConfig = extraArgs.includes("--ignore-user-config") || extraArgs.includes("--no-ignore-user-config");
+  return [
+    ...defaults.filter((arg, index) => {
+      if (hasModel && (arg === "--model" || defaults[index - 1] === "--model")) {
+        return false;
+      }
+      if (hasReasoningEffort && (arg === "-c" || defaults[index - 1] === "-c" && arg.includes("model_reasoning_effort"))) {
+        return false;
+      }
+      if (hasIgnoreUserConfig && arg === "--ignore-user-config") {
+        return false;
+      }
+      return true;
+    }),
+    ...extraArgs
+  ];
+}
+
+function buildCodexExecCommand({ executable, executableArgs, repoPath, sandbox, lastMessagePath, cliInfo, extraArgs, env }) {
   const args = [...executableArgs, "exec"];
   if (cliInfo.supports.cd) {
     args.push("--cd", repoPath);
@@ -430,7 +474,7 @@ function buildCodexExecCommand({ executable, executableArgs, repoPath, sandbox, 
   if (cliInfo.supports.ephemeral) {
     args.push("--ephemeral");
   }
-  args.push(...extraArgs);
+  args.push(...mergedCodexArgs({ env, extraArgs }));
   args.push("-");
   return [executable, ...args];
 }

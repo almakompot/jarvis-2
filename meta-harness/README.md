@@ -16,7 +16,23 @@ npm run meta -- verify --run /path/to/repo/.task-runs/<id>
 npm run meta -- report --run /path/to/repo/.task-runs/<id> --format text
 ```
 
-If local Codex config is not suitable for a harness run, pass Codex `exec` flags through with repeated `--codex-arg` entries:
+By default, the runner launches Codex with:
+
+```bash
+META_HARNESS_CODEX_MODEL=gpt-5.5
+META_HARNESS_CODEX_REASONING_EFFORT=high
+META_HARNESS_CODEX_IGNORE_USER_CONFIG=1
+```
+
+Override these in the environment when the account or task needs a different model:
+
+```bash
+META_HARNESS_CODEX_MODEL=gpt-5.5 \
+META_HARNESS_CODEX_REASONING_EFFORT=high \
+npm run meta -- run --repo /path/to/repo --task "build X"
+```
+
+If a specific run needs one-off Codex `exec` flags, pass them through with repeated `--codex-arg` entries. Explicit `--codex-arg --model ...` overrides the environment default:
 
 ```bash
 npm run meta -- run --repo /path/to/repo --task "build X" --codex-arg --ignore-user-config --codex-arg --model --codex-arg gpt-5.5
