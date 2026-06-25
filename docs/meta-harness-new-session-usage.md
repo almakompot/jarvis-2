@@ -22,6 +22,7 @@ jarvis-harness doctor
 For a target repository:
 
 ```bash
+jarvis-harness web
 jarvis-harness init --repo /path/to/repo --task "build the requested feature"
 ```
 
@@ -104,6 +105,14 @@ jarvis-harness report --run /path/to/repo/.task-runs/<id> --format html
 The report is a readable projection. JSON artifacts remain authoritative.
 
 ## Dashboard
+
+Open the local harness web app:
+
+```bash
+jarvis-harness web
+```
+
+The web app is specified in `docs/meta-harness-webapp-spec.md`. It can start runs, initialize packets, list discovered active/recent `.task-runs`, and open each run on its own dashboard page.
 
 Open a local read-only dashboard for a run:
 

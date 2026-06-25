@@ -1,12 +1,10 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
 import process from "node:process";
-import { fileURLToPath } from "node:url";
 
 import { notifyBlockedRun, notifyCompletionRun } from "./block-notifier.mjs";
-import { detectCodexCli, codexRunnerDefaultsFromEnv } from "./codex-runner.mjs";
 import { openDashboardUrl, startDashboardServer } from "./dashboard.mjs";
+import { runDoctor, renderDoctorReport } from "./doctor.mjs";
+import { startWebAppServer } from "./webapp.mjs";
 import {
   cleanupRuns,
   createRerun,
@@ -17,9 +15,6 @@ import {
   writeRunReport
 } from "./report-ux.mjs";
 import { initTaskRun } from "./task-packet.mjs";
-
-const moduleDir = dirname(fileURLToPath(import.meta.url));
-const harnessRoot = resolve(moduleDir, "../..");
 
 export async function runMetaCli({
   argv = process.argv.slice(2),
@@ -179,6 +174,37 @@ export async function runMetaCli({
       return 0;
     }
 
+    if (command === "web") {
+      const parsed = parseWebArgs(args.rest);
+      const result = await startWebAppServer({
+        host: parsed.host,
+        port: parsed.port,
+        scanRoots: parsed.scanRoots,
+        executable: parsed.executable,
+        env
+      });
+      writeLine(stdout, `Web app URL: ${result.url}`);
+      writeLine(stdout, `Scan roots: ${result.scanRoots.join(", ")}`);
+      if (parsed.openBrowser) {
+        const opened = openDashboardUrl({ url: result.url });
+        if (opened.status === "opened") {
+          writeLine(stdout, "Opened web app in the default browser.");
+        } else {
+          writeLine(stderr, `Web app browser open ${opened.status}: ${opened.reason || "unknown"}`);
+        }
+      }
+      writeLine(stdout, "Press Ctrl-C to stop.");
+      const stop = () => {
+        result.close().catch(() => {});
+      };
+      process.once("SIGINT", stop);
+      process.once("SIGTERM", stop);
+      await result.closed;
+      process.off("SIGINT", stop);
+      process.off("SIGTERM", stop);
+      return 0;
+    }
+
     if (command === "doctor") {
       const parsed = parseDoctorArgs(args.rest);
       const result = runDoctor({ ...parsed, env });
@@ -195,56 +221,6 @@ export async function runMetaCli({
     writeLine(stderr, error.message || String(error));
     return 1;
   }
-}
-
-export function runDoctor({ executable = "codex", env = process.env } = {}) {
-  const checks = [];
-  const nodeVersion = process.versions.node;
-  const nodeMajor = Number(nodeVersion.split(".")[0]);
-  addCheck(checks, {
-    id: "node.version",
-    status: nodeMajor >= 20 ? "passed" : "failed",
-    message: `Node ${nodeVersion}`,
-    detail: "Requires Node >=20."
-  });
-  for (const file of [
-    "package.json",
-    "meta-harness/lib/meta-cli.mjs",
-    "meta-harness/lib/codex-runner.mjs",
-    "docs/fresh-repo-feature-protocol.md"
-  ]) {
-    addCheck(checks, {
-      id: `file.${file}`,
-      status: existsSync(join(harnessRoot, file)) ? "passed" : "failed",
-      message: file,
-      detail: "Required packaged harness file."
-    });
-  }
-
-  const codex = detectCodexCli({ executable });
-  addCheck(checks, {
-    id: "codex.version",
-    status: codex.available ? "passed" : "failed",
-    message: codex.available ? codex.version : codex.error,
-    detail: `${executable} --version`
-  });
-
-  const defaults = codexRunnerDefaultsFromEnv(env);
-  const packageJson = readPackageJson();
-  const failed = checks.filter((check) => check.status !== "passed");
-  return {
-    schemaVersion: 1,
-    kind: "jarvis.doctor",
-    status: failed.length === 0 ? "passed" : "failed",
-    package: {
-      name: packageJson.name || null,
-      version: packageJson.version || null,
-      private: Boolean(packageJson.private),
-      root: harnessRoot
-    },
-    defaults,
-    checks
-  };
 }
 
 function parseTopLevel(argv) {
@@ -541,6 +517,38 @@ function parseDashboardArgs(argv, commandName) {
   return args;
 }
 
+function parseWebArgs(argv) {
+  const args = {
+    host: "127.0.0.1",
+    port: 0,
+    openBrowser: true,
+    scanRoots: [],
+    executable: "codex"
+  };
+  for (let index = 0; index < argv.length; index += 1) {
+    const item = argv[index];
+    if (item === "--host") {
+      args.host = argv[++index];
+    } else if (item === "--port") {
+      args.port = Number(argv[++index]);
+    } else if (item === "--root" || item === "--scan-root") {
+      args.scanRoots.push(argv[++index]);
+    } else if (item === "--executable") {
+      args.executable = argv[++index];
+    } else if (item === "--open") {
+      args.openBrowser = true;
+    } else if (item === "--no-open") {
+      args.openBrowser = false;
+    } else {
+      throw new Error(`Unknown web argument: ${item}`);
+    }
+  }
+  if (!Number.isInteger(args.port) || args.port < 0 || args.port > 65535) {
+    throw new Error("--port must be an integer between 0 and 65535.");
+  }
+  return args;
+}
+
 function parseDoctorArgs(argv) {
   const args = { executable: "codex", json: false };
   for (let index = 0; index < argv.length; index += 1) {
@@ -570,6 +578,7 @@ function printHelp({ commandName, stdout }) {
   ${commandName} verify --run /path/to/.task-runs/<id>
   ${commandName} report --run /path/to/.task-runs/<id> [--format text|html] [--output path]
   ${commandName} dashboard --run /path/to/.task-runs/<id> [--port 4817] [--no-open]
+  ${commandName} web [--root /path/to/projects] [--port 4817] [--no-open]
   ${commandName} rerun --from /path/to/.task-runs/<id> [--id child-id]
   ${commandName} promote-failure --run /path/to/.task-runs/<id> --category missing-smoke --case-id browse-reset
   ${commandName} cleanup --repo /path/to/repo [--dry-run|--delete]
@@ -577,33 +586,6 @@ function printHelp({ commandName, stdout }) {
 
 Implementation runs have no default wall-clock timeout. Use --timeout-ms only as an explicit operator guard.
 The CLI is a thin M8 product surface over the run-folder artifacts. JSON artifacts remain authoritative.`);
-}
-
-function renderDoctorReport(result) {
-  const lines = [
-    `Jarvis doctor: ${result.status}`,
-    `Package: ${result.package.name}@${result.package.version}${result.package.private ? " (private)" : ""}`,
-    `Root: ${result.package.root}`,
-    "Defaults:",
-    `- META_HARNESS_CODEX_MODEL=${result.defaults.model}`,
-    `- META_HARNESS_CODEX_REASONING_EFFORT=${result.defaults.reasoningEffort}`,
-    `- META_HARNESS_CODEX_IGNORE_USER_CONFIG=${result.defaults.ignoreUserConfig}`,
-    "Checks:",
-    ...result.checks.map((check) => `- ${check.status} ${check.id}: ${check.message}`)
-  ];
-  return lines.join("\n");
-}
-
-function addCheck(checks, { id, status, message, detail }) {
-  checks.push({ id, status, message: message || "", detail: detail || "" });
-}
-
-function readPackageJson() {
-  const path = join(harnessRoot, "package.json");
-  if (!existsSync(path)) {
-    return {};
-  }
-  return JSON.parse(readFileSync(path, "utf8"));
 }
 
 function formatCommand(prefix, command, args = []) {

@@ -23,6 +23,7 @@ test("jarvis-harness bin exposes help and doctor from outside the jarvis repo", 
   const help = runJarvis(["--help"], { cwd });
   assert.equal(help.status, 0, help.stderr);
   assert.match(help.stdout, /jarvis-harness run --repo/);
+  assert.match(help.stdout, /jarvis-harness web/);
   assert.match(help.stdout, /jarvis-harness dashboard --run/);
   assert.match(help.stdout, /jarvis-harness doctor/);
 

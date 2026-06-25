@@ -12,6 +12,7 @@ The repo contains:
 - `docs/meta-harness-new-session-usage.md`: operator checklist for using the harness from a fresh Codex session.
 - `docs/meta-harness-final-report-format.md`: final report contract and section order.
 - `docs/meta-harness-dashboard-spec.md`: desktop-only file-backed dashboard target spec.
+- `docs/meta-harness-webapp-spec.md`: local minimalist webapp spec for starting and finding harness runs.
 - `meta-harness`: task compiler, run-envelope generator, Codex runner wrapper, proof executors, completed-run verifier, and policy engine.
 - `corpus/meta-harness`: sanitized failure-corpus replay cases for known false-pass patterns.
 - `apps/site-gate-extension`: Chrome extension example with a real browser smoke test.
@@ -47,6 +48,7 @@ Current invocation shape:
 
 ```bash
 jarvis-harness run --repo /path/to/repo --task "build the requested feature"
+jarvis-harness web
 jarvis-harness dashboard --run /path/to/repo/.task-runs/<id>
 jarvis-harness verify --run /path/to/repo/.task-runs/<id>
 jarvis-harness report --run /path/to/repo/.task-runs/<id> --format text
@@ -60,7 +62,9 @@ Development fallback from this repo still works:
 npm run meta -- run --repo /path/to/repo --task "build the requested feature"
 ```
 
-Not available yet: public npm publishing. `package.json` remains `private: true`; use local global install from this checkout. The local dashboard command is implemented from `docs/meta-harness-dashboard-spec.md`.
+Not available yet: public npm publishing. `package.json` remains `private: true`; use local global install from this checkout. The local web app is implemented from `docs/meta-harness-webapp-spec.md`; the per-run dashboard command is implemented from `docs/meta-harness-dashboard-spec.md`.
+
+`jarvis-harness web` opens a minimalist local app in the default browser. The main page can start a run, initialize a packet, list discovered active/recent `.task-runs`, and open each run on its own dashboard page.
 
 `jarvis-harness dashboard --run <run-dir>` opens the local dashboard URL in the default browser. Add `--no-open` to print the URL without opening a browser tab.
 

@@ -181,7 +181,11 @@ export function resolveDashboardArtifact({ runDir, artifactPath } = {}) {
   };
 }
 
-export function renderDashboardHtml() {
+export function renderDashboardHtml({ apiBase = "/api", homeHref = null } = {}) {
+  const safeApiBase = String(apiBase || "/api").replace(/\/+$/, "");
+  const homeLink = homeHref
+    ? `<div class="meta"><a href="${escapeHtmlAttr(homeHref)}">Runs</a></div>`
+    : "";
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -347,6 +351,7 @@ export function renderDashboardHtml() {
       <div class="header">
         <div>
           <h1>JARVIS HARNESS RUN</h1>
+          ${homeLink}
           <div id="task" class="meta">Loading task...</div>
           <div id="repo" class="meta"></div>
           <div id="run-dir" class="meta"></div>
@@ -406,6 +411,7 @@ export function renderDashboardHtml() {
   </main>
   <script>
     const refreshMs = 1500;
+    const apiBase = ${JSON.stringify(safeApiBase)};
     const statusEl = document.getElementById("overall-status");
     const text = (value) => value == null || value === "" ? "none" : String(value);
     const cls = (status) => ["accepted", "passed", "implemented", "finished"].includes(status) ? "pass"
@@ -440,7 +446,7 @@ export function renderDashboardHtml() {
     function artifactLink(path) {
       if (!path) return "none";
       const a = document.createElement("a");
-      a.href = "/api/artifact?path=" + encodeURIComponent(path);
+      a.href = apiBase + "/artifact?path=" + encodeURIComponent(path);
       a.textContent = path;
       a.target = "_blank";
       return a;
@@ -459,7 +465,7 @@ export function renderDashboardHtml() {
       }
     }
     async function refresh() {
-      const [summaryRes, outputRes] = await Promise.all([fetch("/api/summary"), fetch("/api/output")]);
+      const [summaryRes, outputRes] = await Promise.all([fetch(apiBase + "/summary"), fetch(apiBase + "/output")]);
       const summary = await summaryRes.json();
       const output = await outputRes.json();
       const s = summary.status || {};
@@ -1073,6 +1079,14 @@ function sendText(response, statusCode, text, contentType) {
 function truncateText(value, maxLength) {
   const text = String(value || "");
   return text.length > maxLength ? `${text.slice(0, maxLength - 1)}...` : text;
+}
+
+function escapeHtmlAttr(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 
 function formatDuration(ms) {

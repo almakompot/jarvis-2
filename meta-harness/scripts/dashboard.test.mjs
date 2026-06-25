@@ -220,8 +220,13 @@ test("dashboard HTML is desktop-only and file-backed", () => {
   assert.doesNotMatch(html, /text-overflow: ellipsis/);
   assert.doesNotMatch(html, /grid-template-columns: calc\(var\(--dashboard-width\)/);
   assert.doesNotMatch(html, /2400px/);
-  assert.match(html, /\/api\/summary/);
-  assert.match(html, /\/api\/artifact\?path=/);
+  assert.match(html, /const apiBase = "\/api"/);
+  assert.match(html, /apiBase \+ "\/summary"/);
+  assert.match(html, /apiBase \+ "\/artifact\?path="/);
+
+  const embedded = renderDashboardHtml({ apiBase: "/api/run/token", homeHref: "/" });
+  assert.match(embedded, /const apiBase = "\/api\/run\/token"/);
+  assert.match(embedded, /<a href="\/">Runs<\/a>/);
 });
 
 function createRun(runId) {

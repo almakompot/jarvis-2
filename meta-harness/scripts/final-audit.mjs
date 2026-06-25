@@ -58,14 +58,17 @@ const requiredFiles = [
   "bin/jarvis-harness.mjs",
   "meta-harness/lib/meta-cli.mjs",
   "meta-harness/lib/dashboard.mjs",
+  "meta-harness/lib/webapp.mjs",
   "meta-harness/README.md",
   "docs/meta-harness-new-session-usage.md",
   "docs/meta-harness-final-report-format.md",
   "docs/meta-harness-dashboard-spec.md",
+  "docs/meta-harness-webapp-spec.md",
   "docs/meta-harness-implementation-plan.md",
   "docs/meta-harness-implementation-plan-verification-report.md",
   "docs/goal-tool-calls.md",
   "meta-harness/scripts/dashboard.test.mjs",
+  "meta-harness/scripts/webapp.test.mjs",
   "evals/web-ui-replay/README.md",
   "evals/browser-extension-replay/README.md",
   "evals/non-web-replay/README.md",
@@ -78,6 +81,7 @@ const docRequirements = [
     path: "docs/meta-harness-new-session-usage.md",
     fragments: [
       "jarvis-harness doctor",
+      "jarvis-harness web",
       "jarvis-harness run --repo",
       "jarvis-harness verify --run",
       "jarvis-harness dashboard --run",
@@ -91,7 +95,8 @@ const docRequirements = [
       "internal policy is `rejected`; keep fixing",
       "Blocked is the state that asks the user/operator for input",
       "no default wall-clock timeout",
-      "docs/meta-harness-dashboard-spec.md"
+      "docs/meta-harness-dashboard-spec.md",
+      "docs/meta-harness-webapp-spec.md"
     ]
   },
   {
@@ -122,8 +127,10 @@ const docRequirements = [
       "docs/meta-harness-new-session-usage.md",
       "docs/meta-harness-final-report-format.md",
       "docs/meta-harness-dashboard-spec.md",
+      "docs/meta-harness-webapp-spec.md",
       "npm install -g .",
       "jarvis-harness doctor",
+      "jarvis-harness web",
       "jarvis-harness run --repo",
       "jarvis-harness dashboard --run",
       "--no-open",
@@ -135,6 +142,7 @@ const docRequirements = [
     path: "meta-harness/README.md",
     fragments: [
       "jarvis-harness run --repo",
+      "jarvis-harness web",
       "jarvis-harness dashboard --run",
       "--no-open",
       "jarvis-harness doctor",
@@ -149,7 +157,8 @@ const docRequirements = [
       "meta run` exits `3`",
       "completion-notification.json",
       "no default wall-clock timeout",
-      "docs/meta-harness-dashboard-spec.md"
+      "docs/meta-harness-dashboard-spec.md",
+      "docs/meta-harness-webapp-spec.md"
     ]
   },
   {
@@ -169,6 +178,19 @@ const docRequirements = [
       "Live Streaming Prerequisite",
       "GET /api/summary",
       "artifact endpoint rejects path traversal",
+      "npm run check"
+    ]
+  },
+  {
+    path: "docs/meta-harness-webapp-spec.md",
+    fragments: [
+      "jarvis-harness web",
+      "No database",
+      "No mobile layout",
+      "GET  /api/runs",
+      "POST /api/runs",
+      "GET  /runs/<token>",
+      "Artifact reads must reuse the dashboard artifact guard",
       "npm run check"
     ]
   },
@@ -243,6 +265,7 @@ export function runFinalAudit({ now = new Date() } = {}) {
     "meta verify --run",
     "meta report --run",
     "meta dashboard --run",
+    "meta web",
     "meta rerun --from",
     "meta promote-failure",
     "meta cleanup --repo",
@@ -267,6 +290,7 @@ export function runFinalAudit({ now = new Date() } = {}) {
   for (const fragment of [
     "jarvis-harness init --repo",
     "jarvis-harness run --repo",
+    "jarvis-harness web",
     "jarvis-harness verify --run",
     "jarvis-harness report --run",
     "jarvis-harness doctor"

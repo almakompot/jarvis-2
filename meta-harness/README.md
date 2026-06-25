@@ -4,7 +4,7 @@ Meta-Harness is a local Codex CLI delivery gate. It turns a raw feature request 
 
 Use it when "done" should mean the requested surface was exercised and the evidence supports the claim.
 
-It includes a local read-only dashboard, but it is not a semantic oracle. It is a structured way to make weak completion claims rejectable. The dashboard behavior is specified in `docs/meta-harness-dashboard-spec.md`.
+It includes a local web app and read-only per-run dashboard, but neither is a semantic oracle. They are structured ways to make weak completion claims visible and rejectable. The web app behavior is specified in `docs/meta-harness-webapp-spec.md`; the dashboard behavior is specified in `docs/meta-harness-dashboard-spec.md`.
 
 ## Use It
 
@@ -22,6 +22,7 @@ codex --version
 If `codex --version` fails, install or fix the Codex CLI first. The harness wraps the local Codex CLI; it does not bundle Codex.
 
 ```bash
+jarvis-harness web
 jarvis-harness run --repo /path/to/repo --task "build the requested feature"
 jarvis-harness dashboard --run /path/to/repo/.task-runs/<id>
 jarvis-harness verify --run /path/to/repo/.task-runs/<id>
@@ -107,6 +108,7 @@ If blocked, name the external condition and what user/operator input is needed.
 Create or run a task packet:
 
 ```bash
+jarvis-harness web
 jarvis-harness run --repo /path/to/repo --task "build X"
 jarvis-harness init --repo /path/to/repo --task "build X"
 jarvis-harness run --run /path/to/repo/.task-runs/<id>
