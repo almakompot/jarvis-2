@@ -6,6 +6,7 @@ import test from "node:test";
 
 import {
   buildDashboardSummary,
+  openDashboardUrl,
   readDashboardOutput,
   renderDashboardHtml,
   resolveDashboardArtifact,
@@ -111,6 +112,52 @@ test("dashboard server serves HTML, JSON endpoints, artifact files, and traversa
   const traversal = await fetch(new URL("/api/artifact?path=..%2Fpackage.json", server.url));
   assert.equal(traversal.status, 400);
   assert.match(await traversal.text(), /escapes the run directory/);
+});
+
+test("dashboard opener launches the platform default browser command", () => {
+  const calls = [];
+  const runner = (executable, args, options) => {
+    calls.push({ executable, args, options });
+    return { status: 0 };
+  };
+
+  const opened = openDashboardUrl({
+    url: "http://127.0.0.1:4817/",
+    platform: "darwin",
+    runner
+  });
+
+  assert.equal(opened.status, "opened");
+  assert.equal(calls[0].executable, "open");
+  assert.deepEqual(calls[0].args, ["http://127.0.0.1:4817/"]);
+  assert.equal(calls[0].options.detached, true);
+});
+
+test("dashboard opener supports Linux and Windows command shapes", () => {
+  const calls = [];
+  const runner = (executable, args) => {
+    calls.push({ executable, args });
+    return { status: 0 };
+  };
+
+  assert.equal(openDashboardUrl({ url: "http://127.0.0.1:1/", platform: "linux", runner }).status, "opened");
+  assert.equal(openDashboardUrl({ url: "http://127.0.0.1:2/", platform: "win32", runner }).status, "opened");
+  assert.equal(calls[0].executable, "xdg-open");
+  assert.equal(calls[1].executable, "cmd");
+  assert.deepEqual(calls[1].args, ["/c", "start", "", "http://127.0.0.1:2/"]);
+});
+
+test("dashboard opener reports unsupported platforms without throwing", () => {
+  const result = openDashboardUrl({
+    url: "http://127.0.0.1:4817/",
+    platform: "plan9",
+    runner: () => {
+      throw new Error("should not run");
+    }
+  });
+
+  assert.equal(result.status, "skipped");
+  assert.match(result.reason, /Unsupported platform/);
 });
 
 test("dashboard HTML is desktop-only and file-backed", () => {

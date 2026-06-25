@@ -178,7 +178,7 @@ Open a local read-only dashboard for one run folder:
 jarvis-harness dashboard --run /path/to/repo/.task-runs/<id>
 ```
 
-The dashboard is a desktop-only, read-only, file-backed local web surface over one run folder. It does not add a database, queue, background worker, remote service, or hidden state. It serves bounded JSON endpoints, safe artifact links, live runner output tails, requirement/proof status, changed files, command logs, and the decision/trust state. See `docs/meta-harness-dashboard-spec.md` for the layout, endpoints, artifact safety rules, and acceptance gates.
+The dashboard is a desktop-only, read-only, file-backed local web surface over one run folder. It opens the URL in the default browser by default; pass `--no-open` to only print the URL. It does not add a database, queue, background worker, remote service, or hidden state. It serves bounded JSON endpoints, safe artifact links, live runner output tails, requirement/proof status, changed files, command logs, and the decision/trust state. See `docs/meta-harness-dashboard-spec.md` for the layout, endpoints, artifact safety rules, and acceptance gates.
 
 ## Report Format
 

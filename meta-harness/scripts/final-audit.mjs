@@ -125,6 +125,7 @@ const docRequirements = [
       "jarvis-harness doctor",
       "jarvis-harness run --repo",
       "jarvis-harness dashboard --run",
+      "--no-open",
       "no default wall-clock timeout",
       "npm run meta:final-audit"
     ]
@@ -134,6 +135,7 @@ const docRequirements = [
     fragments: [
       "jarvis-harness run --repo",
       "jarvis-harness dashboard --run",
+      "--no-open",
       "jarvis-harness doctor",
       "npm install -g .",
       "A/B Evaluation Harness",
@@ -152,6 +154,7 @@ const docRequirements = [
     path: "docs/meta-harness-dashboard-spec.md",
     fragments: [
       "jarvis-harness dashboard --run",
+      "--no-open",
       "read-only",
       "file-backed",
       "No mobile layout",

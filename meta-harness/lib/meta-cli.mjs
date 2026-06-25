@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 import { notifyBlockedRun, notifyCompletionRun } from "./block-notifier.mjs";
 import { detectCodexCli, codexRunnerDefaultsFromEnv } from "./codex-runner.mjs";
-import { startDashboardServer } from "./dashboard.mjs";
+import { openDashboardUrl, startDashboardServer } from "./dashboard.mjs";
 import {
   cleanupRuns,
   createRerun,
@@ -157,6 +157,14 @@ export async function runMetaCli({
       const result = await startDashboardServer(parsed);
       writeLine(stdout, `Dashboard URL: ${result.url}`);
       writeLine(stdout, `Run dir: ${result.runDir}`);
+      if (parsed.openBrowser) {
+        const opened = openDashboardUrl({ url: result.url });
+        if (opened.status === "opened") {
+          writeLine(stdout, "Opened dashboard in the default browser.");
+        } else {
+          writeLine(stderr, `Dashboard browser open ${opened.status}: ${opened.reason || "unknown"}`);
+        }
+      }
       writeLine(stdout, "Press Ctrl-C to stop.");
       const stop = () => {
         result.close().catch(() => {});
@@ -482,7 +490,7 @@ function parseCleanupArgs(argv, commandName) {
 }
 
 function parseDashboardArgs(argv, commandName) {
-  const args = { runDir: null, host: "127.0.0.1", port: 0 };
+  const args = { runDir: null, host: "127.0.0.1", port: 0, openBrowser: true };
   for (let index = 0; index < argv.length; index += 1) {
     const item = argv[index];
     if (item === "--run" || item === "--run-dir") {
@@ -491,6 +499,10 @@ function parseDashboardArgs(argv, commandName) {
       args.host = argv[++index];
     } else if (item === "--port") {
       args.port = Number(argv[++index]);
+    } else if (item === "--open") {
+      args.openBrowser = true;
+    } else if (item === "--no-open") {
+      args.openBrowser = false;
     } else {
       throw new Error(`Unknown dashboard argument: ${item}`);
     }
@@ -532,7 +544,7 @@ function printHelp({ commandName, stdout }) {
   ${commandName} run --run /path/to/.task-runs/<id> [--dry-run] [--timeout-ms ms]
   ${commandName} verify --run /path/to/.task-runs/<id>
   ${commandName} report --run /path/to/.task-runs/<id> [--format text|html] [--output path]
-  ${commandName} dashboard --run /path/to/.task-runs/<id> [--port 4817]
+  ${commandName} dashboard --run /path/to/.task-runs/<id> [--port 4817] [--no-open]
   ${commandName} rerun --from /path/to/.task-runs/<id> [--id child-id]
   ${commandName} promote-failure --run /path/to/.task-runs/<id> --category missing-smoke --case-id browse-reset
   ${commandName} cleanup --repo /path/to/repo [--dry-run|--delete]

@@ -24,16 +24,17 @@ Expected behavior:
 
 - starts a local HTTP server on `127.0.0.1`
 - prints the exact URL
+- opens the exact URL in the default browser
 - serves only the selected run folder
 - reads files from disk on each poll or through a lightweight file watcher
 - never writes run state
 - exits cleanly on `Ctrl-C`
 
-Optional later flags:
+Supported flags:
 
 ```bash
 jarvis-harness dashboard --run <run-dir> --port 4817
-jarvis-harness dashboard --run <run-dir> --open
+jarvis-harness dashboard --run <run-dir> --no-open
 ```
 
 ## Architecture Boundary
@@ -269,6 +270,7 @@ All paths must be normalized under the selected run dir. Reject traversal, absol
 Implementation is acceptable only when:
 
 - `jarvis-harness dashboard --run <run-dir>` starts a local URL
+- dashboard opens in the default browser by default and `--no-open` suppresses it
 - dashboard renders an initialized run with missing live artifacts
 - dashboard renders an active or fake running run from incrementally written files
 - dashboard renders accepted, rejected, blocked, and pending states from fixtures

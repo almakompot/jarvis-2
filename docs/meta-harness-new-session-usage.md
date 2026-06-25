@@ -113,6 +113,8 @@ jarvis-harness dashboard --run /path/to/repo/.task-runs/<id>
 
 The design is in `docs/meta-harness-dashboard-spec.md`. It is a desktop-only, read-only, file-backed local web surface over one run folder. It is useful while a run is active because the runner flushes raw stdout/stderr and parsed JSONL artifacts during execution.
 
+The dashboard opens in the default browser by default. Use `--no-open` when running it in an automation or when you only want the URL printed.
+
 ## Decision Rules
 
 Do not report completion from memory or assistant prose. Use the policy decision:

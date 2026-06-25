@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { createServer } from "node:http";
 import {
   createReadStream,
@@ -493,6 +494,45 @@ export async function startDashboardServer({ runDir, host = defaultHost, port = 
   };
 }
 
+export function openDashboardUrl({ url, platform = process.platform, runner = spawnSync } = {}) {
+  if (!url) {
+    throw new Error("Dashboard URL is required.");
+  }
+  const command = openCommandForPlatform({ url, platform });
+  if (!command) {
+    return {
+      status: "skipped",
+      reason: `Unsupported platform: ${platform}`,
+      url
+    };
+  }
+  const result = runner(command.executable, command.args, {
+    stdio: "ignore",
+    detached: true
+  });
+  if (result?.error) {
+    return {
+      status: "failed",
+      reason: result.error.message,
+      url,
+      command
+    };
+  }
+  if (typeof result?.status === "number" && result.status !== 0) {
+    return {
+      status: "failed",
+      reason: `${command.executable} exited ${result.status}`,
+      url,
+      command
+    };
+  }
+  return {
+    status: "opened",
+    url,
+    command
+  };
+}
+
 function handleDashboardRequest({ request, response, runDir }) {
   const url = new URL(request.url || "/", "http://127.0.0.1");
   try {
@@ -530,6 +570,19 @@ function handleDashboardRequest({ request, response, runDir }) {
   } catch (error) {
     sendJson(response, 400, { error: error.message || String(error) });
   }
+}
+
+function openCommandForPlatform({ url, platform }) {
+  if (platform === "darwin") {
+    return { executable: "open", args: [url] };
+  }
+  if (platform === "win32") {
+    return { executable: "cmd", args: ["/c", "start", "", url] };
+  }
+  if (platform === "linux" || platform === "freebsd" || platform === "openbsd") {
+    return { executable: "xdg-open", args: [url] };
+  }
+  return null;
 }
 
 function summarizeStatus({ now, runnerConfig, runnerState, verification, verifierReport, policyDecision, finalReport, latestEvent, latestCommand, spec }) {

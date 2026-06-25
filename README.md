@@ -62,6 +62,8 @@ npm run meta -- run --repo /path/to/repo --task "build the requested feature"
 
 Not available yet: public npm publishing. `package.json` remains `private: true`; use local global install from this checkout. The local dashboard command is implemented from `docs/meta-harness-dashboard-spec.md`.
 
+`jarvis-harness dashboard --run <run-dir>` opens the local dashboard URL in the default browser. Add `--no-open` to print the URL without opening a browser tab.
+
 ## Quick Start
 
 ```bash
