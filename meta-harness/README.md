@@ -4,7 +4,7 @@ Meta-Harness is a local Codex CLI delivery gate. It turns a raw feature request 
 
 Use it when "done" should mean the requested surface was exercised and the evidence supports the claim.
 
-It is not a dashboard yet, and it is not a semantic oracle. It is a structured way to make weak completion claims rejectable.
+It is not a dashboard yet, and it is not a semantic oracle. It is a structured way to make weak completion claims rejectable. The dashboard target is specified in `docs/meta-harness-dashboard-spec.md`.
 
 ## Use It
 
@@ -168,6 +168,16 @@ Read them in this order when debugging:
 5. `evidence/`
 6. `diff.patch`
 
+## Dashboard Target
+
+The planned dashboard command is:
+
+```bash
+jarvis-harness dashboard --run /path/to/repo/.task-runs/<id>
+```
+
+This command is not implemented yet. The accepted design is a desktop-only, read-only, file-backed local web surface over one run folder. It must not add a database, queue, background worker, remote service, or hidden state. See `docs/meta-harness-dashboard-spec.md` for the layout, endpoints, artifact safety rules, and acceptance gates.
+
 ## Report Format
 
 The Final Report Format is documented in `docs/meta-harness-final-report-format.md`.
@@ -306,7 +316,7 @@ Pipeline:
 5. M5 Proof Executors run local command proof and collect typed surface evidence for browser, extension, API, CLI, data, visual, and manual proof obligations.
 6. M6 Completed-Run Verifier audits artifacts independently and writes `verifier-report.json` with blocking, major, minor, and info findings.
 7. M7 Failure Corpus replays sanitized expected-fail and expected-pass cases so known false-pass patterns stay rejected.
-8. M8 CLI/Report UX exposes the daily `meta` commands and renders findings-first text/HTML reports.
+8. M8 CLI/Report UX exposes the daily `meta` commands and renders findings-first text/HTML reports. The next M8 expansion is the file-backed dashboard in `docs/meta-harness-dashboard-spec.md`.
 9. M9 Policy Engine consumes verification, verifier findings, task-class policy, optional corpus replay, and overrides, then writes `policy-decision.json`.
 
 Acceptance is artifact-based:

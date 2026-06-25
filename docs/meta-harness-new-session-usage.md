@@ -103,6 +103,16 @@ jarvis-harness report --run /path/to/repo/.task-runs/<id> --format html
 
 The report is a readable projection. JSON artifacts remain authoritative.
 
+## Dashboard Target
+
+The dashboard is specified but not implemented yet:
+
+```bash
+jarvis-harness dashboard --run /path/to/repo/.task-runs/<id>
+```
+
+The target design is in `docs/meta-harness-dashboard-spec.md`. It is a desktop-only, read-only, file-backed local web surface over one run folder. Until it exists, inspect active runs with `tail -f` on `events.jsonl`, `evidence/runner/codex.stdout.jsonl`, and `evidence/runner/codex.stderr.txt`.
+
 ## Decision Rules
 
 Do not report completion from memory or assistant prose. Use the policy decision:
@@ -189,5 +199,5 @@ Use docs/meta-harness-new-session-usage.md and meta-harness/README.md.
 For any target repo feature request, create or inspect the .task-runs/<id> packet first.
 Completion means policy-decision.json is accepted, report output is evidence-linked, npm run check passes when package-level behavior changed, and remaining risk is explicit.
 Do not read .env* contents. Do not run deploy, push, send, publish, migration, production mutation, or cost-bearing external API commands without explicit approval recorded in artifacts.
-Use `jarvis-harness run`, `jarvis-harness verify`, and `jarvis-harness report`. If blocked, stop after notification. Resume with `jarvis-harness run --run <run-dir>` for runner blockers or `jarvis-harness verify --run <run-dir>` for verification blockers.
+Use `jarvis-harness run`, `jarvis-harness verify`, and `jarvis-harness report`. If implementing dashboard work, use `docs/meta-harness-dashboard-spec.md` as the controlling spec. If blocked, stop after notification. Resume with `jarvis-harness run --run <run-dir>` for runner blockers or `jarvis-harness verify --run <run-dir>` for verification blockers.
 ```

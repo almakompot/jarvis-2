@@ -176,7 +176,7 @@ Make it usable.
 Possible surfaces:
 
 - CLI first
-- local dashboard later
+- local dashboard later, file-backed and desktop-only
 - per-run HTML report
 - diff plus proof matrix
 - rerun verifier
@@ -185,7 +185,7 @@ Possible surfaces:
 
 Done means it can be used daily without fighting it.
 
-Status: M8 v1 exists as a locally installable `jarvis-harness` CLI backed by `bin/jarvis-harness.mjs`, `meta-harness/lib/meta-cli.mjs`, and `meta-harness/lib/report-ux.mjs`. It exposes `init`, `run`, `verify`, `report`, `rerun`, `promote-failure`, `cleanup`, and `doctor` around local run folders. Text reports lead with findings, then show policy decision, active rules, commands, missing proof, evidence paths, residual risk, and next actions. HTML reports write evidence-linked `html-report/index.html`. CLI tests cover accepted, rejected, blocked, missing-artifact, evidence-link, rerun, cleanup, command-path behavior, global invocation from outside the repo, and doctor checks. Dashboard UX remains future work.
+Status: M8 v1 exists as a locally installable `jarvis-harness` CLI backed by `bin/jarvis-harness.mjs`, `meta-harness/lib/meta-cli.mjs`, and `meta-harness/lib/report-ux.mjs`. It exposes `init`, `run`, `verify`, `report`, `rerun`, `promote-failure`, `cleanup`, and `doctor` around local run folders. Text reports lead with findings, then show policy decision, active rules, commands, missing proof, evidence paths, residual risk, and next actions. HTML reports write evidence-linked `html-report/index.html`. CLI tests cover accepted, rejected, blocked, missing-artifact, evidence-link, rerun, cleanup, command-path behavior, global invocation from outside the repo, and doctor checks. Dashboard UX remains future work, with the accepted file-backed desktop-only target spec in `docs/meta-harness-dashboard-spec.md`.
 
 Current packaging boundary: local global install is supported with `npm install -g .` from `/Users/levente/Documents/jarvis-2`. The package remains private and is not published to npm.
 

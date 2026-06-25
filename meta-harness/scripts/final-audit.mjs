@@ -60,6 +60,7 @@ const requiredFiles = [
   "meta-harness/README.md",
   "docs/meta-harness-new-session-usage.md",
   "docs/meta-harness-final-report-format.md",
+  "docs/meta-harness-dashboard-spec.md",
   "docs/meta-harness-implementation-plan.md",
   "docs/meta-harness-implementation-plan-verification-report.md",
   "docs/goal-tool-calls.md",
@@ -86,7 +87,8 @@ const docRequirements = [
       "200-500 total runs",
       "Rejected is repairable by default",
       "Blocked is the state that asks the user/operator for input",
-      "no default wall-clock timeout"
+      "no default wall-clock timeout",
+      "docs/meta-harness-dashboard-spec.md"
     ]
   },
   {
@@ -115,6 +117,7 @@ const docRequirements = [
       "evals/ab-harness",
       "docs/meta-harness-new-session-usage.md",
       "docs/meta-harness-final-report-format.md",
+      "docs/meta-harness-dashboard-spec.md",
       "npm install -g .",
       "jarvis-harness doctor",
       "jarvis-harness run --repo",
@@ -136,7 +139,23 @@ const docRequirements = [
       "blocked-notification.json",
       "meta run` exits `3`",
       "completion-notification.json",
-      "no default wall-clock timeout"
+      "no default wall-clock timeout",
+      "docs/meta-harness-dashboard-spec.md"
+    ]
+  },
+  {
+    path: "docs/meta-harness-dashboard-spec.md",
+    fragments: [
+      "jarvis-harness dashboard --run",
+      "read-only",
+      "file-backed",
+      "No mobile layout",
+      "min-width: 1500px",
+      "No database",
+      "Live Streaming Prerequisite",
+      "GET /api/summary",
+      "artifact endpoint rejects path traversal",
+      "npm run check"
     ]
   },
   {

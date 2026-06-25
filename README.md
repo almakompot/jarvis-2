@@ -11,6 +11,7 @@ The repo contains:
 - `docs/meta-harness-roadmap.md`: milestone roadmap for turning the doctrine into a real meta-harness.
 - `docs/meta-harness-new-session-usage.md`: operator checklist for using the harness from a fresh Codex session.
 - `docs/meta-harness-final-report-format.md`: final report contract and section order.
+- `docs/meta-harness-dashboard-spec.md`: desktop-only file-backed dashboard target spec.
 - `meta-harness`: task compiler, run-envelope generator, Codex runner wrapper, proof executors, completed-run verifier, and policy engine.
 - `corpus/meta-harness`: sanitized failure-corpus replay cases for known false-pass patterns.
 - `apps/site-gate-extension`: Chrome extension example with a real browser smoke test.
@@ -58,7 +59,7 @@ Development fallback from this repo still works:
 npm run meta -- run --repo /path/to/repo --task "build the requested feature"
 ```
 
-Not available yet: public npm publishing. `package.json` remains `private: true`; use local global install from this checkout.
+Not available yet: public npm publishing or the local dashboard command. `package.json` remains `private: true`; use local global install from this checkout. Dashboard implementation is specified in `docs/meta-harness-dashboard-spec.md`.
 
 ## Quick Start
 
@@ -123,7 +124,7 @@ npm run meta:check
 
 Current enforcement: required artifacts must exist, requirements must map to proof obligations, proof obligations must map back to known requirements, secret paths must be forbidden, verification cannot claim passed without evidence, and final reports cannot claim passed without passed verification and cited evidence.
 
-Still unenforced: deep repo adapter inference, automatic corpus minimization/sanitization, and dashboard UX.
+Still unenforced: deep repo adapter inference, automatic corpus minimization/sanitization, and the dashboard UX specified in `docs/meta-harness-dashboard-spec.md`.
 
 ## Meta-Harness M4/M5
 

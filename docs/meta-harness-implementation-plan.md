@@ -1275,11 +1275,11 @@ Acceptance tests include corpus replay. Known fake verification cases should rej
 
 ### M8 Product Surface
 
-M8 owns daily usability. Its purpose is to make the harness practical. Without M8, the system becomes a pile of JSON that only its author can use. The product surface starts as CLI and later may include HTML reports or a local dashboard.
+M8 owns daily usability. Its purpose is to make the harness practical. Without M8, the system becomes a pile of JSON that only its author can use. The product surface starts as CLI and later may include HTML reports or a local dashboard. The dashboard target is `docs/meta-harness-dashboard-spec.md`: a desktop-only, read-only, file-backed local web surface over one `.task-runs/<id>/` folder.
 
-Target commands include `meta init`, `meta run`, `meta verify`, `meta report`, `meta rerun`, `meta promote-failure`, and `meta cleanup`. Target artifacts include generated text reports and `html-report/`. Implementation mechanics include argument parsing, useful errors, file links, concise report rendering, rerun discovery, evidence navigation, and corpus promotion prompts.
+Target commands include `meta init`, `meta run`, `meta verify`, `meta report`, `meta rerun`, `meta promote-failure`, `meta cleanup`, and the future `jarvis-harness dashboard --run <run-dir>`. Target artifacts include generated text reports and `html-report/`. Implementation mechanics include argument parsing, useful errors, file links, concise report rendering, rerun discovery, evidence navigation, corpus promotion prompts, read-only dashboard endpoints, bounded output tails, and safe artifact path normalization.
 
-Acceptance tests include CLI snapshot tests, rejected-run report tests, accepted-run report tests, missing-file errors, and evidence-link checks. M8 relates to M9 because users need to see policy decisions clearly. It relates to M7 because promoting failures must be ergonomic. It relates to every milestone because poor UX makes disciplined use unlikely.
+Acceptance tests include CLI snapshot tests, rejected-run report tests, accepted-run report tests, missing-file errors, evidence-link checks, dashboard summary parsing, artifact traversal rejection, local server startup, and rendered HTML smoke. M8 relates to M9 because users need to see policy decisions clearly. It relates to M7 because promoting failures must be ergonomic. It relates to every milestone because poor UX makes disciplined use unlikely.
 
 ### M9 Policy And Enforcement
 
