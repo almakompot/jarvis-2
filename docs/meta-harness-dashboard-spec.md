@@ -110,19 +110,23 @@ Implementation rule:
 No mobile layout. If opened on a phone, the page must force the same desktop canvas and allow horizontal panning.
 
 ```css
+:root {
+  --dashboard-width: 2400px;
+}
+
 html,
 body {
-  min-width: 1500px;
+  min-width: var(--dashboard-width);
   overflow-x: auto;
 }
 
 .dashboard {
-  width: 1500px;
+  width: var(--dashboard-width);
   margin: 0 auto;
 }
 ```
 
-The dashboard should be dense, operational, and information-rich. Avoid marketing-page styling, oversized hero sections, decorative cards, and mobile rearrangement.
+The dashboard should be dense, operational, and information-rich. Panel widths and vertical spacing should derive from `--dashboard-width`, so zooming out reveals the whole surface without text being cut off. Avoid marketing-page styling, oversized hero sections, decorative cards, and mobile rearrangement.
 
 ## ASCII Layout
 

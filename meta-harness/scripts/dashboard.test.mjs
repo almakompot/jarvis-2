@@ -94,7 +94,8 @@ test("dashboard server serves HTML, JSON endpoints, artifact files, and traversa
 
   const html = await (await fetch(server.url)).text();
   assert.match(html, /JARVIS HARNESS RUN/);
-  assert.match(html, /min-width: 1500px/);
+  assert.match(html, /--dashboard-width: 2400px/);
+  assert.match(html, /min-width: var\(--dashboard-width\)/);
   assert.doesNotMatch(html, /@media/);
 
   const summary = await (await fetch(new URL("/api/summary", server.url))).json();
@@ -163,8 +164,11 @@ test("dashboard opener reports unsupported platforms without throwing", () => {
 test("dashboard HTML is desktop-only and file-backed", () => {
   const html = renderDashboardHtml();
 
-  assert.match(html, /<meta name="viewport" content="width=1500">/);
-  assert.match(html, /width: 1500px/);
+  assert.match(html, /<meta name="viewport" content="width=2400">/);
+  assert.match(html, /--dashboard-width: 2400px/);
+  assert.match(html, /grid-template-columns: calc\(var\(--dashboard-width\) \* 0\.31\)/);
+  assert.match(html, /white-space: normal/);
+  assert.doesNotMatch(html, /text-overflow: ellipsis/);
   assert.match(html, /\/api\/summary/);
   assert.match(html, /\/api\/artifact\?path=/);
 });

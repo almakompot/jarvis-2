@@ -169,7 +169,7 @@ export function renderDashboardHtml() {
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=1500">
+  <meta name="viewport" content="width=2400">
   <title>Jarvis Harness Run</title>
   <style>
     :root {
@@ -184,11 +184,17 @@ export function renderDashboardHtml() {
       --warn: #9a3412;
       --pending: #475569;
       --blue: #1d4ed8;
+      --dashboard-width: 2400px;
+      --space-1: calc(var(--dashboard-width) / 480);
+      --space-2: calc(var(--dashboard-width) / 240);
+      --space-3: calc(var(--dashboard-width) / 160);
+      --top-row-min: calc(var(--dashboard-width) * 0.17);
+      --mid-row-min: calc(var(--dashboard-width) * 0.14);
     }
     * { box-sizing: border-box; }
     html,
     body {
-      min-width: 1500px;
+      min-width: var(--dashboard-width);
       margin: 0;
       overflow-x: auto;
       background: #e5e7eb;
@@ -196,32 +202,37 @@ export function renderDashboardHtml() {
       font: 13px/1.35 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
     }
     .dashboard {
-      width: 1500px;
+      width: var(--dashboard-width);
       margin: 0 auto;
-      padding: 12px;
+      padding: var(--space-2);
     }
     .frame {
       border: 1px solid var(--line);
       background: var(--panel);
     }
     .header {
-      padding: 12px 14px;
+      padding: var(--space-2) var(--space-3);
       display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 8px;
+      grid-template-columns: minmax(0, 1fr) calc(var(--dashboard-width) * 0.12);
+      gap: var(--space-2);
       border-bottom: 1px solid var(--line);
     }
     h1 {
-      margin: 0 0 6px;
+      margin: 0 0 var(--space-1);
       font-size: 18px;
       letter-spacing: 0;
     }
-    .meta, .commands, .risk { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .meta, .commands, .risk {
+      color: var(--muted);
+      white-space: normal;
+      overflow: visible;
+      word-break: break-word;
+    }
     .status {
       display: inline-block;
       min-width: 110px;
       text-align: center;
-      padding: 5px 8px;
+      padding: var(--space-1) calc(var(--space-1) * 1.6);
       border: 1px solid var(--line);
       background: var(--soft);
       font-weight: 700;
@@ -232,20 +243,20 @@ export function renderDashboardHtml() {
     .status.blocked, .warn { color: var(--warn); }
     .status.pending, .pending { color: var(--pending); }
     .command-strip {
-      padding: 8px 14px;
+      padding: var(--space-1) var(--space-3);
       border-bottom: 1px solid var(--line);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      white-space: normal;
+      overflow: visible;
+      word-break: break-word;
     }
     .grid-top {
       display: grid;
-      grid-template-columns: 440px 445px 1fr;
+      grid-template-columns: calc(var(--dashboard-width) * 0.31) calc(var(--dashboard-width) * 0.33) minmax(0, 1fr);
       border-bottom: 1px solid var(--line);
     }
     .grid-mid {
       display: grid;
-      grid-template-columns: 1fr 330px;
+      grid-template-columns: minmax(0, 1fr) calc(var(--dashboard-width) * 0.26);
       border-bottom: 1px solid var(--line);
     }
     .grid-low {
@@ -254,14 +265,15 @@ export function renderDashboardHtml() {
       border-bottom: 1px solid var(--line);
     }
     section {
-      min-height: 210px;
-      padding: 10px 12px;
+      min-height: var(--mid-row-min);
+      padding: var(--space-2) var(--space-3);
       border-right: 1px solid var(--line);
-      overflow: hidden;
+      overflow: visible;
     }
+    .grid-top section { min-height: var(--top-row-min); }
     section:last-child { border-right: 0; }
     h2 {
-      margin: 0 0 8px;
+      margin: 0 0 var(--space-1);
       font-size: 13px;
       letter-spacing: 0;
       text-transform: uppercase;
@@ -270,8 +282,7 @@ export function renderDashboardHtml() {
       margin: 0;
       white-space: pre-wrap;
       word-break: break-word;
-      max-height: 178px;
-      overflow: hidden;
+      overflow: visible;
     }
     table {
       width: 100%;
@@ -279,22 +290,23 @@ export function renderDashboardHtml() {
       table-layout: fixed;
     }
     th, td {
-      padding: 3px 4px;
+      padding: calc(var(--space-1) * 0.6) var(--space-1);
       border-bottom: 1px solid #e2e8f0;
       vertical-align: top;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      overflow: visible;
+      text-overflow: clip;
+      white-space: normal;
+      word-break: break-word;
     }
     th { text-align: left; color: var(--muted); font-weight: 700; }
     .decision {
-      padding: 10px 12px 12px;
-      min-height: 120px;
+      padding: var(--space-2) var(--space-3) var(--space-3);
+      min-height: calc(var(--dashboard-width) * 0.08);
     }
     .kv {
       display: grid;
-      grid-template-columns: 190px 1fr;
-      gap: 4px 12px;
+      grid-template-columns: calc(var(--dashboard-width) * 0.12) minmax(0, 1fr);
+      gap: var(--space-1) var(--space-3);
     }
     a { color: var(--blue); text-decoration: none; }
     a:hover { text-decoration: underline; }
