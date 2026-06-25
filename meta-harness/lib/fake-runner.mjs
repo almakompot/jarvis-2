@@ -117,6 +117,8 @@ export async function runFakeCodex({
   const state = createCaptureState({ runId, runDir: absoluteRunDir, repoPath, scenario, createdAt, verification });
   const runnerStdoutPath = join(runnerEvidenceDir, "fake-codex.stdout.jsonl");
   const runnerStderrPath = join(runnerEvidenceDir, "fake-codex.stderr.txt");
+  writeFileSync(runnerStdoutPath, "");
+  writeFileSync(runnerStderrPath, "");
   let stdoutBuffer = "";
   const stdoutChunks = [];
   const stderrChunks = [];
@@ -135,6 +137,7 @@ export async function runFakeCodex({
     source: "runner",
     content: buildPromptSummary({ runDir: absoluteRunDir })
   });
+  flushCaptureDeltas({ state, runDir: absoluteRunDir });
 
   const child = spawn(executable, command.slice(1), {
     cwd: repoPath,
@@ -153,16 +156,20 @@ export async function runFakeCodex({
     child.stdout.on("data", (chunk) => {
       const text = chunk.toString("utf8");
       stdoutChunks.push(text);
+      writeFileSync(runnerStdoutPath, text, { flag: "a" });
       stdoutBuffer += text;
       const lines = stdoutBuffer.split(/\r?\n/);
       stdoutBuffer = lines.pop() || "";
       for (const line of lines) {
         consumeFakeEventLine({ line, state, commandEvidenceDir, allowedFiles });
+        flushCaptureDeltas({ state, runDir: absoluteRunDir });
       }
     });
 
     child.stderr.on("data", (chunk) => {
-      stderrChunks.push(chunk.toString("utf8"));
+      const text = chunk.toString("utf8");
+      stderrChunks.push(text);
+      writeFileSync(runnerStderrPath, text, { flag: "a" });
     });
 
     child.on("close", (exitCode, signal) => {
@@ -171,6 +178,7 @@ export async function runFakeCodex({
       }
       if (stdoutBuffer.trim()) {
         consumeFakeEventLine({ line: stdoutBuffer, state, commandEvidenceDir, allowedFiles });
+        flushCaptureDeltas({ state, runDir: absoluteRunDir });
       }
       resolvePromise({ exitCode, signal });
     });
@@ -202,10 +210,7 @@ export async function runFakeCodex({
     status,
     message: `Fake Codex runner ended with status ${status}.`
   }));
-
-  appendJsonl(join(absoluteRunDir, "transcript.jsonl"), state.transcriptEntries);
-  appendJsonl(join(absoluteRunDir, "command-log.jsonl"), state.commandEntries);
-  appendJsonl(join(absoluteRunDir, "events.jsonl"), state.events);
+  flushCaptureDeltas({ state, runDir: absoluteRunDir });
 
   const runnerState = {
     schemaVersion: 1,
@@ -282,12 +287,27 @@ function createCaptureState({ runId, runDir, repoPath, scenario, createdAt, veri
     interrupted: false,
     parseFailed: false,
     verificationPassed: verification?.status === "passed",
+    flushedTranscriptEntries: 0,
+    flushedCommandEntries: 0,
+    flushedEvents: 0,
     transcriptEntries: [],
     commandEntries: [],
     events: [],
     failures: [],
     warnings: []
   };
+}
+
+function flushCaptureDeltas({ state, runDir }) {
+  const transcriptEntries = state.transcriptEntries.slice(state.flushedTranscriptEntries);
+  const commandEntries = state.commandEntries.slice(state.flushedCommandEntries);
+  const events = state.events.slice(state.flushedEvents);
+  appendJsonl(join(runDir, "transcript.jsonl"), transcriptEntries);
+  appendJsonl(join(runDir, "command-log.jsonl"), commandEntries);
+  appendJsonl(join(runDir, "events.jsonl"), events);
+  state.flushedTranscriptEntries = state.transcriptEntries.length;
+  state.flushedCommandEntries = state.commandEntries.length;
+  state.flushedEvents = state.events.length;
 }
 
 function consumeFakeEventLine({ line, state, commandEvidenceDir, allowedFiles }) {

@@ -103,15 +103,15 @@ jarvis-harness report --run /path/to/repo/.task-runs/<id> --format html
 
 The report is a readable projection. JSON artifacts remain authoritative.
 
-## Dashboard Target
+## Dashboard
 
-The dashboard is specified but not implemented yet:
+Open a local read-only dashboard for a run:
 
 ```bash
 jarvis-harness dashboard --run /path/to/repo/.task-runs/<id>
 ```
 
-The target design is in `docs/meta-harness-dashboard-spec.md`. It is a desktop-only, read-only, file-backed local web surface over one run folder. Until it exists, inspect active runs with `tail -f` on `events.jsonl`, `evidence/runner/codex.stdout.jsonl`, and `evidence/runner/codex.stderr.txt`.
+The design is in `docs/meta-harness-dashboard-spec.md`. It is a desktop-only, read-only, file-backed local web surface over one run folder. It is useful while a run is active because the runner flushes raw stdout/stderr and parsed JSONL artifacts during execution.
 
 ## Decision Rules
 

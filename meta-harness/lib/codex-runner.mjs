@@ -192,6 +192,8 @@ export async function runCodexCli({
   const stderrPath = join(runnerEvidenceDir, dryRun ? "codex-dry-run.stderr.txt" : "codex.stderr.txt");
   const lastMessagePath = join(runnerEvidenceDir, dryRun ? "codex-dry-run-final-message.txt" : "codex-final-message.txt");
   writeFileSync(promptPath, prompt);
+  writeFileSync(stdoutPath, "");
+  writeFileSync(stderrPath, "");
 
   if (!cliInfo.available) {
     return writeBlockedRun({
@@ -254,6 +256,7 @@ export async function runCodexCli({
     content: prompt,
     artifact: relativeArtifact(absoluteRunDir, promptPath)
   });
+  flushCaptureDeltas({ state, runDir: absoluteRunDir });
 
   let stdoutBuffer = "";
   const stdoutChunks = [];
@@ -295,16 +298,20 @@ export async function runCodexCli({
     child.stdout.on("data", (chunk) => {
       const text = chunk.toString("utf8");
       stdoutChunks.push(text);
+      writeFileSync(stdoutPath, text, { flag: "a" });
       stdoutBuffer += text;
       const lines = stdoutBuffer.split(/\r?\n/);
       stdoutBuffer = lines.pop() || "";
       for (const line of lines) {
         consumeCodexOutputLine({ line, state });
+        flushCaptureDeltas({ state, runDir: absoluteRunDir });
       }
     });
 
     child.stderr.on("data", (chunk) => {
-      stderrChunks.push(chunk.toString("utf8"));
+      const text = chunk.toString("utf8");
+      stderrChunks.push(text);
+      writeFileSync(stderrPath, text, { flag: "a" });
     });
 
     child.on("error", (error) => {
@@ -315,6 +322,7 @@ export async function runCodexCli({
     child.on("close", (exitCode, signal) => {
       if (stdoutBuffer.trim()) {
         consumeCodexOutputLine({ line: stdoutBuffer, state });
+        flushCaptureDeltas({ state, runDir: absoluteRunDir });
       }
       resolveOnce({ exitCode, signal });
     });
@@ -339,6 +347,7 @@ export async function runCodexCli({
     proofObligationIds: [],
     source: "codex-cli-process"
   });
+  flushCaptureDeltas({ state, runDir: absoluteRunDir });
 
   const finalMessage = existsSync(lastMessagePath) ? readFileSync(lastMessagePath, "utf8").trim() : "";
   if (finalMessage) {
@@ -354,6 +363,7 @@ export async function runCodexCli({
     if (detectFinalOverclaim(finalMessage) && verification?.status !== "passed") {
       addFailure(state, "final-overclaim", "Codex final message claimed completion before verification and policy acceptance.");
     }
+    flushCaptureDeltas({ state, runDir: absoluteRunDir });
   }
 
   if (spawnError) {
@@ -392,10 +402,7 @@ export async function runCodexCli({
     status,
     message: `Real Codex CLI run ended with status ${status}.`
   }));
-
-  appendJsonl(join(absoluteRunDir, "transcript.jsonl"), state.transcriptEntries);
-  appendJsonl(join(absoluteRunDir, "command-log.jsonl"), state.commandEntries);
-  appendJsonl(join(absoluteRunDir, "events.jsonl"), state.events);
+  flushCaptureDeltas({ state, runDir: absoluteRunDir });
 
   const runnerState = buildRunnerState({
     state,
@@ -635,12 +642,27 @@ function createCaptureState({ runId, runDir, repoPath, createdAt, dryRun, verifi
     verificationPassed: verification?.status === "passed",
     cliInfo,
     commandEvidenceDir,
+    flushedTranscriptEntries: 0,
+    flushedCommandEntries: 0,
+    flushedEvents: 0,
     transcriptEntries: [],
     commandEntries: [],
     events: [],
     failures: [],
     warnings: dryRun ? [{ id: "dry-run", message: "Codex was launched in dry-run mode; no implementation is expected." }] : []
   };
+}
+
+function flushCaptureDeltas({ state, runDir }) {
+  const transcriptEntries = state.transcriptEntries.slice(state.flushedTranscriptEntries);
+  const commandEntries = state.commandEntries.slice(state.flushedCommandEntries);
+  const events = state.events.slice(state.flushedEvents);
+  appendJsonl(join(runDir, "transcript.jsonl"), transcriptEntries);
+  appendJsonl(join(runDir, "command-log.jsonl"), commandEntries);
+  appendJsonl(join(runDir, "events.jsonl"), events);
+  state.flushedTranscriptEntries = state.transcriptEntries.length;
+  state.flushedCommandEntries = state.commandEntries.length;
+  state.flushedEvents = state.events.length;
 }
 
 function consumeCodexOutputLine({ line, state }) {

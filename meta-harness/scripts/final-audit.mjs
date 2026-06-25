@@ -57,6 +57,7 @@ const requiredFiles = [
   "README.md",
   "bin/jarvis-harness.mjs",
   "meta-harness/lib/meta-cli.mjs",
+  "meta-harness/lib/dashboard.mjs",
   "meta-harness/README.md",
   "docs/meta-harness-new-session-usage.md",
   "docs/meta-harness-final-report-format.md",
@@ -64,6 +65,7 @@ const requiredFiles = [
   "docs/meta-harness-implementation-plan.md",
   "docs/meta-harness-implementation-plan-verification-report.md",
   "docs/goal-tool-calls.md",
+  "meta-harness/scripts/dashboard.test.mjs",
   "evals/web-ui-replay/README.md",
   "evals/browser-extension-replay/README.md",
   "evals/non-web-replay/README.md",
@@ -78,6 +80,7 @@ const docRequirements = [
       "jarvis-harness doctor",
       "jarvis-harness run --repo",
       "jarvis-harness verify --run",
+      "jarvis-harness dashboard --run",
       "jarvis-harness report --run",
       "npm install -g .",
       "policy-decision.json",
@@ -121,6 +124,7 @@ const docRequirements = [
       "npm install -g .",
       "jarvis-harness doctor",
       "jarvis-harness run --repo",
+      "jarvis-harness dashboard --run",
       "no default wall-clock timeout",
       "npm run meta:final-audit"
     ]
@@ -129,6 +133,7 @@ const docRequirements = [
     path: "meta-harness/README.md",
     fragments: [
       "jarvis-harness run --repo",
+      "jarvis-harness dashboard --run",
       "jarvis-harness doctor",
       "npm install -g .",
       "A/B Evaluation Harness",
@@ -228,6 +233,7 @@ export function runFinalAudit({ now = new Date() } = {}) {
     "meta run --run",
     "meta verify --run",
     "meta report --run",
+    "meta dashboard --run",
     "meta rerun --from",
     "meta promote-failure",
     "meta cleanup --repo",

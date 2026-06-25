@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 import { notifyBlockedRun, notifyCompletionRun } from "./block-notifier.mjs";
 import { detectCodexCli, codexRunnerDefaultsFromEnv } from "./codex-runner.mjs";
+import { startDashboardServer } from "./dashboard.mjs";
 import {
   cleanupRuns,
   createRerun,
@@ -148,6 +149,23 @@ export async function runMetaCli({
       if (!result.dryRun) {
         writeLine(stdout, `Deleted: ${result.deleted.length}`);
       }
+      return 0;
+    }
+
+    if (command === "dashboard") {
+      const parsed = parseDashboardArgs(args.rest, commandName);
+      const result = await startDashboardServer(parsed);
+      writeLine(stdout, `Dashboard URL: ${result.url}`);
+      writeLine(stdout, `Run dir: ${result.runDir}`);
+      writeLine(stdout, "Press Ctrl-C to stop.");
+      const stop = () => {
+        result.close().catch(() => {});
+      };
+      process.once("SIGINT", stop);
+      process.once("SIGTERM", stop);
+      await result.closed;
+      process.off("SIGINT", stop);
+      process.off("SIGTERM", stop);
       return 0;
     }
 
@@ -463,6 +481,29 @@ function parseCleanupArgs(argv, commandName) {
   return args;
 }
 
+function parseDashboardArgs(argv, commandName) {
+  const args = { runDir: null, host: "127.0.0.1", port: 0 };
+  for (let index = 0; index < argv.length; index += 1) {
+    const item = argv[index];
+    if (item === "--run" || item === "--run-dir") {
+      args.runDir = argv[++index];
+    } else if (item === "--host") {
+      args.host = argv[++index];
+    } else if (item === "--port") {
+      args.port = Number(argv[++index]);
+    } else {
+      throw new Error(`Unknown dashboard argument: ${item}`);
+    }
+  }
+  if (!args.runDir) {
+    throw new Error(`${commandName} dashboard requires --run`);
+  }
+  if (!Number.isInteger(args.port) || args.port < 0 || args.port > 65535) {
+    throw new Error("--port must be an integer between 0 and 65535.");
+  }
+  return args;
+}
+
 function parseDoctorArgs(argv) {
   const args = { executable: "codex", json: false };
   for (let index = 0; index < argv.length; index += 1) {
@@ -491,6 +532,7 @@ function printHelp({ commandName, stdout }) {
   ${commandName} run --run /path/to/.task-runs/<id> [--dry-run] [--timeout-ms ms]
   ${commandName} verify --run /path/to/.task-runs/<id>
   ${commandName} report --run /path/to/.task-runs/<id> [--format text|html] [--output path]
+  ${commandName} dashboard --run /path/to/.task-runs/<id> [--port 4817]
   ${commandName} rerun --from /path/to/.task-runs/<id> [--id child-id]
   ${commandName} promote-failure --run /path/to/.task-runs/<id> --category missing-smoke --case-id browse-reset
   ${commandName} cleanup --repo /path/to/repo [--dry-run|--delete]

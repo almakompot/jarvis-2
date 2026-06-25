@@ -1,6 +1,6 @@
 # Meta-Harness Dashboard Spec
 
-This is the target specification for the local run dashboard. It is not implemented yet. The implementation goal is to make a running harness visible without adding a database, queue, worker service, or hidden state.
+This is the controlling specification for the local run dashboard. Dashboard v1 is implemented as a read-only file projection. The goal is to make a running harness visible without adding a database, queue, worker service, or hidden state.
 
 ## Purpose
 

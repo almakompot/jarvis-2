@@ -816,7 +816,7 @@ Task-class adapters provide proof templates. They do not decide policy alone. A 
 | 5 | M6 verifier v1 | completed-run verifier | `meta-harness/verifier` | mutation tests | fake passes rejected | semantic limits |
 | 6 | M7 failure corpus v1 | corpus format and replay | `corpus/`, `evals/` | expected pass/fail | known failures stay rejected | privacy |
 | 7 | M9 policy engine v1 | pass/reject/block rules | `meta-harness/policy` | rule tests | policy-decision generated | overrides |
-| 8 | M8 CLI/report UX | daily commands and reports | `meta-harness/cli`, report | CLI snapshots | report explains decision | no dashboard yet |
+| 8 | M8 CLI/report/dashboard UX | daily commands, reports, dashboard | `meta-harness/cli`, report, dashboard | CLI/dashboard snapshots | report and dashboard explain decision | multi-run view later |
 | 9 | M10 adapters | web, extension, CLI, API, data | adapter dirs | task-class fixtures | 3 classes proven | broader classes later |
 
 Phase 1 hardens current M1/M3. Deliverables include richer compiler cues, stronger validators, target artifact placeholders, and a real packet generated for `voovo-checkout`. Acceptance requires `npm run meta:check`, `npm run check`, and a validator rejecting generic packets for tasks where concrete scripts are available.
@@ -1275,9 +1275,9 @@ Acceptance tests include corpus replay. Known fake verification cases should rej
 
 ### M8 Product Surface
 
-M8 owns daily usability. Its purpose is to make the harness practical. Without M8, the system becomes a pile of JSON that only its author can use. The product surface starts as CLI and later may include HTML reports or a local dashboard. The dashboard target is `docs/meta-harness-dashboard-spec.md`: a desktop-only, read-only, file-backed local web surface over one `.task-runs/<id>/` folder.
+M8 owns daily usability. Its purpose is to make the harness practical. Without M8, the system becomes a pile of JSON that only its author can use. The product surface starts as CLI, HTML reports, and a local dashboard. The dashboard target is `docs/meta-harness-dashboard-spec.md`: a desktop-only, read-only, file-backed local web surface over one `.task-runs/<id>/` folder.
 
-Target commands include `meta init`, `meta run`, `meta verify`, `meta report`, `meta rerun`, `meta promote-failure`, `meta cleanup`, and the future `jarvis-harness dashboard --run <run-dir>`. Target artifacts include generated text reports and `html-report/`. Implementation mechanics include argument parsing, useful errors, file links, concise report rendering, rerun discovery, evidence navigation, corpus promotion prompts, read-only dashboard endpoints, bounded output tails, and safe artifact path normalization.
+Target commands include `meta init`, `meta run`, `meta verify`, `meta report`, `meta dashboard`, `meta rerun`, `meta promote-failure`, and `meta cleanup`. Target artifacts include generated text reports and `html-report/`. Implementation mechanics include argument parsing, useful errors, file links, concise report rendering, rerun discovery, evidence navigation, corpus promotion prompts, read-only dashboard endpoints, bounded output tails, and safe artifact path normalization.
 
 Acceptance tests include CLI snapshot tests, rejected-run report tests, accepted-run report tests, missing-file errors, evidence-link checks, dashboard summary parsing, artifact traversal rejection, local server startup, and rendered HTML smoke. M8 relates to M9 because users need to see policy decisions clearly. It relates to M7 because promoting failures must be ergonomic. It relates to every milestone because poor UX makes disciplined use unlikely.
 

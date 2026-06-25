@@ -47,6 +47,7 @@ Current invocation shape:
 
 ```bash
 jarvis-harness run --repo /path/to/repo --task "build the requested feature"
+jarvis-harness dashboard --run /path/to/repo/.task-runs/<id>
 jarvis-harness verify --run /path/to/repo/.task-runs/<id>
 jarvis-harness report --run /path/to/repo/.task-runs/<id> --format text
 ```
@@ -59,7 +60,7 @@ Development fallback from this repo still works:
 npm run meta -- run --repo /path/to/repo --task "build the requested feature"
 ```
 
-Not available yet: public npm publishing or the local dashboard command. `package.json` remains `private: true`; use local global install from this checkout. Dashboard implementation is specified in `docs/meta-harness-dashboard-spec.md`.
+Not available yet: public npm publishing. `package.json` remains `private: true`; use local global install from this checkout. The local dashboard command is implemented from `docs/meta-harness-dashboard-spec.md`.
 
 ## Quick Start
 
@@ -124,7 +125,7 @@ npm run meta:check
 
 Current enforcement: required artifacts must exist, requirements must map to proof obligations, proof obligations must map back to known requirements, secret paths must be forbidden, verification cannot claim passed without evidence, and final reports cannot claim passed without passed verification and cited evidence.
 
-Still unenforced: deep repo adapter inference, automatic corpus minimization/sanitization, and the dashboard UX specified in `docs/meta-harness-dashboard-spec.md`.
+Still unenforced: deep repo adapter inference and automatic corpus minimization/sanitization. Dashboard v1 exists as a read-only file-backed local surface over one run folder.
 
 ## Meta-Harness M4/M5
 
@@ -174,6 +175,7 @@ Use the `jarvis-harness` CLI facade for daily runs:
 jarvis-harness run --repo /path/to/repo --task "build the requested feature"
 jarvis-harness init --repo /path/to/repo --task "build the requested feature"
 jarvis-harness run --run /path/to/repo/.task-runs/<id>
+jarvis-harness dashboard --run /path/to/repo/.task-runs/<id>
 jarvis-harness verify --run /path/to/repo/.task-runs/<id>
 jarvis-harness report --run /path/to/repo/.task-runs/<id> --format text
 jarvis-harness report --run /path/to/repo/.task-runs/<id> --format html
