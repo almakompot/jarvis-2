@@ -55,6 +55,8 @@ const checkScriptFragments = [
 
 const requiredFiles = [
   "README.md",
+  "bin/jarvis-harness.mjs",
+  "meta-harness/lib/meta-cli.mjs",
   "meta-harness/README.md",
   "docs/meta-harness-new-session-usage.md",
   "docs/meta-harness-final-report-format.md",
@@ -72,10 +74,11 @@ const docRequirements = [
   {
     path: "docs/meta-harness-new-session-usage.md",
     fragments: [
-      "npm run meta -- init",
-      "npm run meta -- run --repo",
-      "npm run meta -- verify",
-      "npm run meta -- report",
+      "jarvis-harness doctor",
+      "jarvis-harness run --repo",
+      "jarvis-harness verify --run",
+      "jarvis-harness report --run",
+      "npm install -g .",
       "policy-decision.json",
       "final-report.json",
       "npm run check",
@@ -111,13 +114,18 @@ const docRequirements = [
       "evals/ab-harness",
       "docs/meta-harness-new-session-usage.md",
       "docs/meta-harness-final-report-format.md",
+      "npm install -g .",
+      "jarvis-harness doctor",
+      "jarvis-harness run --repo",
       "npm run meta:final-audit"
     ]
   },
   {
     path: "meta-harness/README.md",
     fragments: [
-      "npm run meta -- run --repo",
+      "jarvis-harness run --repo",
+      "jarvis-harness doctor",
+      "npm install -g .",
       "A/B Evaluation Harness",
       "Final Report Format",
       "npm run meta:final-audit",
@@ -142,6 +150,11 @@ export function runFinalAudit({ now = new Date() } = {}) {
   const checks = [];
   const packageJson = readJson("package.json");
   const scripts = packageJson.scripts || {};
+  addCheck(checks, {
+    id: "package.bin.jarvis-harness",
+    passed: packageJson.bin?.["jarvis-harness"] === "bin/jarvis-harness.mjs",
+    message: "package.json defines jarvis-harness bin"
+  });
 
   for (const script of requiredScripts) {
     addCheck(checks, {
@@ -195,12 +208,36 @@ export function runFinalAudit({ now = new Date() } = {}) {
     "meta report --run",
     "meta rerun --from",
     "meta promote-failure",
-    "meta cleanup --repo"
+    "meta cleanup --repo",
+    "meta doctor"
   ]) {
     addCheck(checks, {
       id: `cli.help.${safeId(fragment)}`,
       passed: help.stdout.includes(fragment),
       message: `meta CLI help mentions ${fragment}`
+    });
+  }
+
+  const jarvisHelp = spawnSync(process.execPath, ["bin/jarvis-harness.mjs", "--help"], {
+    cwd: repoRoot,
+    encoding: "utf8"
+  });
+  addCheck(checks, {
+    id: "cli.jarvis-help.exit",
+    passed: jarvisHelp.status === 0,
+    message: "jarvis-harness CLI help exits successfully"
+  });
+  for (const fragment of [
+    "jarvis-harness init --repo",
+    "jarvis-harness run --repo",
+    "jarvis-harness verify --run",
+    "jarvis-harness report --run",
+    "jarvis-harness doctor"
+  ]) {
+    addCheck(checks, {
+      id: `cli.jarvis-help.${safeId(fragment)}`,
+      passed: jarvisHelp.stdout.includes(fragment),
+      message: `jarvis CLI help mentions ${fragment}`
     });
   }
 

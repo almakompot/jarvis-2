@@ -102,7 +102,7 @@ meta run --repo /path/to/repo --task "build X"
 
 and produces a structured run folder.
 
-Status: real wrapper exists for local Codex CLI runs and dry runs. It captures transcript, process output, command logs, diffs, changed files, runner state, and rejected overclaims. Full `meta run` orchestration is still future work.
+Status: real wrapper exists for local Codex CLI runs and dry runs. It captures transcript, process output, command logs, diffs, changed files, runner state, and rejected overclaims. Full run orchestration is exposed through `jarvis-harness run` and the repo-local `npm run meta -- run` fallback; deeper runner hardening remains future work.
 
 ## M5: Verification Executor
 
@@ -185,7 +185,20 @@ Possible surfaces:
 
 Done means it can be used daily without fighting it.
 
-Status: M8 v1 exists as `npm run meta -- <command>` backed by `meta-harness/scripts/meta.mjs` and `meta-harness/lib/report-ux.mjs`. It exposes `init`, `run`, `verify`, `report`, `rerun`, `promote-failure`, and `cleanup` around repo-local run folders. Text reports lead with findings, then show policy decision, active rules, commands, missing proof, evidence paths, residual risk, and next actions. HTML reports write evidence-linked `html-report/index.html`. CLI tests cover accepted, rejected, blocked, missing-artifact, evidence-link, rerun, cleanup, and command-path behavior. Dashboard UX remains future work.
+Status: M8 v1 exists as a locally installable `jarvis-harness` CLI backed by `bin/jarvis-harness.mjs`, `meta-harness/lib/meta-cli.mjs`, and `meta-harness/lib/report-ux.mjs`. It exposes `init`, `run`, `verify`, `report`, `rerun`, `promote-failure`, `cleanup`, and `doctor` around local run folders. Text reports lead with findings, then show policy decision, active rules, commands, missing proof, evidence paths, residual risk, and next actions. HTML reports write evidence-linked `html-report/index.html`. CLI tests cover accepted, rejected, blocked, missing-artifact, evidence-link, rerun, cleanup, command-path behavior, global invocation from outside the repo, and doctor checks. Dashboard UX remains future work.
+
+Current packaging boundary: local global install is supported with `npm install -g .` from `/Users/levente/Documents/jarvis-2`. The package remains private and is not published to npm.
+
+Current standalone CLI:
+
+```bash
+jarvis-harness run --repo /path/to/repo --task "build X"
+jarvis-harness verify --run /path/to/repo/.task-runs/<id>
+jarvis-harness report --run /path/to/repo/.task-runs/<id>
+jarvis-harness doctor
+```
+
+Future packaging work: choose a public package name, decide whether to publish to npm, define versioning/release policy, and add release automation. Codex CLI remains a checked runtime prerequisite, not a bundled dependency.
 
 ## M9: Policy And Enforcement
 

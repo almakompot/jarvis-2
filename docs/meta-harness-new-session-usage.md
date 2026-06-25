@@ -4,17 +4,25 @@ Use this when a fresh Codex session is dropped into a repo and receives a featur
 
 ## Starting Point
 
-From this repository:
+The harness is available as the local global `jarvis-harness` CLI. Start by checking the CLI and Codex prerequisite:
 
 ```bash
-git status --short
-npm run meta:final-audit
+jarvis-harness doctor
+codex --version
+```
+
+If `jarvis-harness` is missing, install or refresh it from the `jarvis-2` checkout:
+
+```bash
+cd /Users/levente/Documents/jarvis-2
+npm install -g .
+jarvis-harness doctor
 ```
 
 For a target repository:
 
 ```bash
-npm run meta -- init --repo /path/to/repo --task "build the requested feature"
+jarvis-harness init --repo /path/to/repo --task "build the requested feature"
 ```
 
 This creates:
@@ -27,31 +35,51 @@ The run folder is the source of truth. It contains the raw task, repo profile, r
 
 The key terminal artifacts are `verification.json`, `verifier-report.json`, `policy-decision.json`, and `final-report.json`.
 
+## Current Packaging Status
+
+Use the harness through `jarvis-harness ...` after local global install.
+
+The package remains private and is not published to npm. The repo-local development fallback still works from `/Users/levente/Documents/jarvis-2`:
+
+```bash
+npm run meta -- run --repo /path/to/repo --task "build X"
+```
+
+Codex CLI is an external prerequisite. `codex --version` must work before live runner commands can work.
+
+Default live runner settings:
+
+```bash
+META_HARNESS_CODEX_MODEL=gpt-5.5
+META_HARNESS_CODEX_REASONING_EFFORT=high
+META_HARNESS_CODEX_IGNORE_USER_CONFIG=1
+```
+
 ## One-Command Flow
 
 For a normal run, use:
 
 ```bash
-npm run meta -- run --repo /path/to/repo --task "build the requested feature"
+jarvis-harness run --repo /path/to/repo --task "build the requested feature"
 ```
 
 For a safe prompt/capture check without implementation edits:
 
 ```bash
-npm run meta -- run --repo /path/to/repo --task "build the requested feature" --dry-run
+jarvis-harness run --repo /path/to/repo --task "build the requested feature" --dry-run
 ```
 
 For deterministic local harness testing:
 
 ```bash
-npm run meta -- run --repo /path/to/repo --task "build the requested feature" --fake --scenario success
+jarvis-harness run --repo /path/to/repo --task "build the requested feature" --fake --scenario success
 ```
 
 The two-step flow remains useful when you want to inspect or edit the task packet before running:
 
 ```bash
-npm run meta -- init --repo /path/to/repo --task "build the requested feature"
-npm run meta -- run --run /path/to/repo/.task-runs/<id>
+jarvis-harness init --repo /path/to/repo --task "build the requested feature"
+jarvis-harness run --run /path/to/repo/.task-runs/<id>
 ```
 
 ## Verification Flow
@@ -59,7 +87,7 @@ npm run meta -- run --run /path/to/repo/.task-runs/<id>
 After implementation artifacts exist:
 
 ```bash
-npm run meta -- verify --run /path/to/repo/.task-runs/<id>
+jarvis-harness verify --run /path/to/repo/.task-runs/<id>
 ```
 
 This runs command proof, surface proof, independent verifier, and policy unless explicitly skipped. The terminal decision is `policy-decision.json`.
@@ -67,8 +95,8 @@ This runs command proof, surface proof, independent verifier, and policy unless 
 Render reports:
 
 ```bash
-npm run meta -- report --run /path/to/repo/.task-runs/<id> --format text
-npm run meta -- report --run /path/to/repo/.task-runs/<id> --format html
+jarvis-harness report --run /path/to/repo/.task-runs/<id> --format text
+jarvis-harness report --run /path/to/repo/.task-runs/<id> --format html
 ```
 
 The report is a readable projection. JSON artifacts remain authoritative.
@@ -103,7 +131,7 @@ The final answer must not say "done" unless `policy-decision.json` is accepted.
 Promote useful rejected or blocked runs into private staging:
 
 ```bash
-npm run meta -- promote-failure --run /path/to/repo/.task-runs/<id> --category missing-smoke --case-id browse-reset
+jarvis-harness promote-failure --run /path/to/repo/.task-runs/<id> --category missing-smoke --case-id browse-reset
 ```
 
 Promotion writes metadata only and does not copy raw run evidence. Minimize and sanitize before committing a corpus case.
@@ -132,6 +160,12 @@ npm run check
 git diff --check
 ```
 
+If live runner startup fails:
+
+- Unsupported model: check `META_HARNESS_CODEX_MODEL` and the account's available Codex CLI models.
+- Missing Codex command: fix the local Codex CLI install or `PATH`.
+- Wrong command shape: use `jarvis-harness ...`; if `jarvis-harness` is missing, reinstall with `npm install -g .` from `jarvis-2`.
+
 ## A/B Validation Scale
 
 The A/B harness dry run is small and deterministic:
@@ -152,5 +186,5 @@ Use docs/meta-harness-new-session-usage.md and meta-harness/README.md.
 For any target repo feature request, create or inspect the .task-runs/<id> packet first.
 Completion means policy-decision.json is accepted, report output is evidence-linked, npm run check passes when package-level behavior changed, and remaining risk is explicit.
 Do not read .env* contents. Do not run deploy, push, send, publish, migration, production mutation, or cost-bearing external API commands without explicit approval recorded in artifacts.
-If blocked, stop after notification. Resume with `npm run meta -- run --run <run-dir>` for runner blockers or `npm run meta -- verify --run <run-dir>` for verification blockers.
+Use `jarvis-harness run`, `jarvis-harness verify`, and `jarvis-harness report`. If blocked, stop after notification. Resume with `jarvis-harness run --run <run-dir>` for runner blockers or `jarvis-harness verify --run <run-dir>` for verification blockers.
 ```

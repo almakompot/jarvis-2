@@ -2,11 +2,11 @@
 
 import process from "node:process";
 
-import { runMetaCli } from "../lib/meta-cli.mjs";
+import { runMetaCli } from "../meta-harness/lib/meta-cli.mjs";
 
 const exitCode = await runMetaCli({
   argv: process.argv.slice(2),
-  commandName: "meta",
-  notificationPrefix: "npm run meta --"
+  commandName: "jarvis-harness",
+  notificationPrefix: "jarvis-harness"
 });
 process.exit(exitCode);

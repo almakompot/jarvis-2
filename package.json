@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "description": "Codex resilience protocol, skill, and evaluation harness.",
+  "bin": {
+    "jarvis-harness": "bin/jarvis-harness.mjs"
+  },
   "scripts": {
     "check": "npm run doctrine:validate && npm run meta:check && npm run test:fixture:expected-fail && npm run test:scorer && npm run eval:score -- --input docs/sample-resilient-output.md && npm run acceptance:test && npm run acceptance:verify && npm run web-ui:test-replay && npm run browser-extension:test-replay && npm run non-web:test-replay && npm run ab-harness:test && npm run meta:final-audit && npm run site-gate:check && npm run voovo:test-repairs && npm run voovo:validate-cases",
     "test:fixture": "node --test evals/shortcut-trap/test/*.test.mjs",

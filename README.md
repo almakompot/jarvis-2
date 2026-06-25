@@ -24,6 +24,40 @@ The repo contains:
 - `scripts/run-codex-eval.mjs`: runs baseline and resilient Codex CLI attempts.
 - `scripts/score-transcript.mjs`: scores the final Codex messages for resilience markers.
 
+## Current Harness Status
+
+The meta-harness is usable today as a locally installable global CLI named `jarvis-harness`.
+
+Current requirements:
+
+- `codex --version` succeeds on `PATH`
+- target any local repo with `--repo /path/to/repo`
+- install the private local package from this checkout
+
+Install or refresh the global command:
+
+```bash
+cd /Users/levente/Documents/jarvis-2
+npm install -g .
+jarvis-harness doctor
+```
+
+Current invocation shape:
+
+```bash
+jarvis-harness run --repo /path/to/repo --task "build the requested feature"
+jarvis-harness verify --run /path/to/repo/.task-runs/<id>
+jarvis-harness report --run /path/to/repo/.task-runs/<id> --format text
+```
+
+Development fallback from this repo still works:
+
+```bash
+npm run meta -- run --repo /path/to/repo --task "build the requested feature"
+```
+
+Not available yet: public npm publishing. `package.json` remains `private: true`; use local global install from this checkout.
+
 ## Quick Start
 
 ```bash
@@ -129,7 +163,20 @@ npm run meta:policy -- --run-dir /path/to/repo/.task-runs/<id>
 
 The policy engine writes `policy-decision.json` with `accepted`, `rejected`, or `blocked`. It consumes `verification.json`, `verifier-report.json`, task-class surface policy, optional `corpus-replay.json`, and optional `policy-overrides.json`; reject/block rules remain recorded even when an explicit override is accepted.
 
-Use the M8 CLI facade for daily runs:
+Use the `jarvis-harness` CLI facade for daily runs:
+
+```bash
+jarvis-harness run --repo /path/to/repo --task "build the requested feature"
+jarvis-harness init --repo /path/to/repo --task "build the requested feature"
+jarvis-harness run --run /path/to/repo/.task-runs/<id>
+jarvis-harness verify --run /path/to/repo/.task-runs/<id>
+jarvis-harness report --run /path/to/repo/.task-runs/<id> --format text
+jarvis-harness report --run /path/to/repo/.task-runs/<id> --format html
+jarvis-harness rerun --from /path/to/repo/.task-runs/<id>
+jarvis-harness cleanup --repo /path/to/repo --dry-run
+```
+
+The repo-local development facade is equivalent:
 
 ```bash
 npm run meta -- run --repo /path/to/repo --task "build the requested feature"

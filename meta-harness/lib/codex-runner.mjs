@@ -416,9 +416,7 @@ export async function runCodexCli({
 
 export function codexDefaultArgsFromEnv(env = process.env) {
   const args = [];
-  const model = env.META_HARNESS_CODEX_MODEL || defaultCodexModel;
-  const reasoningEffort = env.META_HARNESS_CODEX_REASONING_EFFORT || defaultCodexReasoningEffort;
-  const ignoreUserConfig = env.META_HARNESS_CODEX_IGNORE_USER_CONFIG ?? "1";
+  const { model, reasoningEffort, ignoreUserConfig } = codexRunnerDefaultsFromEnv(env);
 
   if (ignoreUserConfig !== "0") {
     args.push("--ignore-user-config");
@@ -430,6 +428,14 @@ export function codexDefaultArgsFromEnv(env = process.env) {
     args.push("-c", `model_reasoning_effort="${reasoningEffort}"`);
   }
   return args;
+}
+
+export function codexRunnerDefaultsFromEnv(env = process.env) {
+  return {
+    model: env.META_HARNESS_CODEX_MODEL || defaultCodexModel,
+    reasoningEffort: env.META_HARNESS_CODEX_REASONING_EFFORT || defaultCodexReasoningEffort,
+    ignoreUserConfig: env.META_HARNESS_CODEX_IGNORE_USER_CONFIG ?? "1"
+  };
 }
 
 function mergedCodexArgs({ env, extraArgs }) {

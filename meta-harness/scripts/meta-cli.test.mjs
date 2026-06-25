@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 
@@ -11,6 +11,98 @@ import { runPolicyEngine } from "../lib/policy-engine.mjs";
 import { initTaskRun } from "../lib/task-packet.mjs";
 import { runCompletedRunVerifier } from "../lib/verifier.mjs";
 import { notifyBlockedRun, notifyCompletionRun, notificationMessage } from "../lib/block-notifier.mjs";
+
+const repoRoot = resolve(".");
+const jarvisBin = join(repoRoot, "bin", "jarvis-harness.mjs");
+
+test("jarvis-harness bin exposes help and doctor from outside the jarvis repo", (t) => {
+  const cwd = mkdtempSync(join(tmpdir(), "jarvis-cli-outside-"));
+  t.after(() => rmSync(cwd, { recursive: true, force: true }));
+  const fakeCodex = writeFakeCodex(cwd);
+
+  const help = runJarvis(["--help"], { cwd });
+  assert.equal(help.status, 0, help.stderr);
+  assert.match(help.stdout, /jarvis-harness run --repo/);
+  assert.match(help.stdout, /jarvis-harness doctor/);
+
+  const doctor = runJarvis(["doctor", "--executable", fakeCodex], { cwd });
+  assert.equal(doctor.status, 0, doctor.stderr);
+  assert.match(doctor.stdout, /Jarvis doctor: passed/);
+  assert.match(doctor.stdout, /META_HARNESS_CODEX_MODEL=gpt-5\.5/);
+  assert.match(doctor.stdout, /codex\.version: codex-cli 999\.0\.0-test/);
+});
+
+test("jarvis-harness doctor fails cleanly when Codex CLI is unavailable", (t) => {
+  const cwd = mkdtempSync(join(tmpdir(), "jarvis-cli-doctor-fail-"));
+  t.after(() => rmSync(cwd, { recursive: true, force: true }));
+
+  const doctor = runJarvis(["doctor", "--executable", join(cwd, "missing-codex")], { cwd });
+  assert.equal(doctor.status, 2);
+  assert.match(doctor.stdout, /Jarvis doctor: failed/);
+  assert.match(doctor.stdout, /failed codex\.version:/);
+});
+
+test("jarvis-harness run, verify, and report work from outside the jarvis repo", (t) => {
+  const cwd = mkdtempSync(join(tmpdir(), "jarvis-cli-outside-flow-"));
+  const repo = mkdtempSync(join(tmpdir(), "jarvis-cli-target-"));
+  t.after(() => {
+    rmSync(cwd, { recursive: true, force: true });
+    rmSync(repo, { recursive: true, force: true });
+  });
+  mkdirSync(join(repo, "scripts"), { recursive: true });
+  writeFileSync(join(repo, "package.json"), `${JSON.stringify({ scripts: { test: "node scripts/pass.mjs" }, type: "module" }, null, 2)}\n`);
+  writeFileSync(join(repo, "scripts", "pass.mjs"), "console.log('jarvis global flow proof');\n");
+  writeFileSync(join(repo, "README.md"), "# Jarvis Global Flow\n");
+
+  const run = runJarvis([
+    "run",
+    "--repo",
+    repo,
+    "--task",
+    "build a local internal helper with command proof",
+    "--id",
+    "jarvis-global-flow",
+    "--fake",
+    "--scenario",
+    "success"
+  ], { cwd });
+
+  assert.equal(run.status, 0, run.stderr);
+  assert.match(run.stdout, /Created task run:/);
+  assert.match(run.stdout, /Runner status: implemented/);
+  const runDir = join(repo, ".task-runs", "jarvis-global-flow");
+  assert.match(readFileSync(join(runDir, "runner-state.json"), "utf8"), /implemented/);
+
+  const verify = runJarvis(["verify", "--run", runDir, "--skip-surfaces", "--command-timeout-ms", "1000"], { cwd });
+  assert.equal(verify.status, 2, verify.stderr);
+  assert.match(verify.stdout, /Verification pipeline status: rejected/);
+
+  const report = runJarvis(["report", "--run", runDir], { cwd });
+  assert.equal(report.status, 0, report.stderr);
+  assert.match(report.stdout, /Decision: rejected/);
+});
+
+test("jarvis-harness blocked runs record jarvis-harness resume commands", (t) => {
+  const cwd = mkdtempSync(join(tmpdir(), "jarvis-cli-blocked-"));
+  const repo = mkdtempSync(join(tmpdir(), "jarvis-cli-blocked-target-"));
+  t.after(() => {
+    rmSync(cwd, { recursive: true, force: true });
+    rmSync(repo, { recursive: true, force: true });
+  });
+  mkdirSync(join(repo, "scripts"), { recursive: true });
+  writeFileSync(join(repo, "package.json"), `${JSON.stringify({ scripts: { test: "node scripts/pass.mjs" }, type: "module" }, null, 2)}\n`);
+  writeFileSync(join(repo, "scripts", "pass.mjs"), "console.log('pass');\n");
+
+  const init = runJarvis(["init", "--repo", repo, "--task", "build a local helper", "--id", "jarvis-blocked-run"], { cwd });
+  assert.equal(init.status, 0, init.stderr);
+  const runDir = join(repo, ".task-runs", "jarvis-blocked-run");
+
+  const run = runJarvis(["run", "--run", runDir, "--fake", "--scenario", "timeout", "--timeout-ms", "100"], { cwd });
+  assert.equal(run.status, 3, run.stderr);
+  const notification = readJson(join(runDir, "blocked-notification.json"));
+  assert.equal(notification.status, "skipped");
+  assert.match(notification.resumeCommand, /^jarvis-harness run --run /);
+});
 
 test("M8 meta report snapshot for an accepted run leads with findings and evidence links", async (t) => {
   const { repo, runDir } = await createAcceptedCommandRun("m8-accepted-report");
@@ -454,6 +546,45 @@ function runMeta(args, options = {}) {
     },
     encoding: "utf8"
   });
+}
+
+function runJarvis(args, options = {}) {
+  return spawnSync(process.execPath, [jarvisBin, ...args], {
+    cwd: options.cwd || process.cwd(),
+    env: {
+      ...process.env,
+      META_HARNESS_NOTIFY_BLOCKED: "0",
+      META_HARNESS_NOTIFY_COMPLETION: "0",
+      ...(options.env || {})
+    },
+    encoding: "utf8"
+  });
+}
+
+function writeFakeCodex(cwd) {
+  const fakeCodex = join(cwd, "fake-codex.mjs");
+  writeFileSync(fakeCodex, `#!/usr/bin/env node
+import process from "node:process";
+
+const args = process.argv.slice(2);
+if (args[0] === "--version") {
+  console.log("codex-cli 999.0.0-test");
+  process.exit(0);
+}
+if (args[0] === "exec" && args.includes("--help")) {
+  console.log(\`Usage: codex exec [OPTIONS] [PROMPT]
+  -C, --cd <DIR>
+  -s, --sandbox <SANDBOX_MODE>
+      --skip-git-repo-check
+      --json
+  -o, --output-last-message <FILE>
+      --ephemeral\`);
+  process.exit(0);
+}
+process.exit(1);
+`);
+  chmodSync(fakeCodex, 0o755);
+  return fakeCodex;
 }
 
 function normalizeReport(output) {

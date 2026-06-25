@@ -8,13 +8,36 @@ It is not a dashboard yet, and it is not a semantic oracle. It is a structured w
 
 ## Use It
 
-Run these commands from the `jarvis-2` repo. The target repo can be any local repository.
+### Standalone CLI
+
+Install or refresh the private local CLI from the `jarvis-2` repo:
 
 ```bash
-npm run meta -- run --repo /path/to/repo --task "build the requested feature"
-npm run meta -- verify --run /path/to/repo/.task-runs/<id>
-npm run meta -- report --run /path/to/repo/.task-runs/<id> --format text
+cd /Users/levente/Documents/jarvis-2
+npm install -g .
+jarvis-harness doctor
+codex --version
 ```
+
+If `codex --version` fails, install or fix the Codex CLI first. The harness wraps the local Codex CLI; it does not bundle Codex.
+
+```bash
+jarvis-harness run --repo /path/to/repo --task "build the requested feature"
+jarvis-harness verify --run /path/to/repo/.task-runs/<id>
+jarvis-harness report --run /path/to/repo/.task-runs/<id> --format text
+```
+
+### Packaging Status
+
+`jarvis-harness` is available through local global install from this checkout. The package remains private and is not published to npm.
+
+The repo-local development facade still works:
+
+```bash
+npm run meta -- run --repo /path/to/repo --task "build X"
+```
+
+Do not assume a public registry package exists. Use `npm install -g .` from `/Users/levente/Documents/jarvis-2`.
 
 By default, the runner launches Codex with:
 
@@ -24,18 +47,26 @@ META_HARNESS_CODEX_REASONING_EFFORT=high
 META_HARNESS_CODEX_IGNORE_USER_CONFIG=1
 ```
 
+Environment reference:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `META_HARNESS_CODEX_MODEL` | `gpt-5.5` | Codex model passed to `codex exec` unless a run explicitly overrides it. |
+| `META_HARNESS_CODEX_REASONING_EFFORT` | `high` | Reasoning effort passed to `codex exec`. |
+| `META_HARNESS_CODEX_IGNORE_USER_CONFIG` | `1` | Adds `--ignore-user-config` by default so local Codex config does not silently break runs. |
+
 Override these in the environment when the account or task needs a different model:
 
 ```bash
 META_HARNESS_CODEX_MODEL=gpt-5.5 \
 META_HARNESS_CODEX_REASONING_EFFORT=high \
-npm run meta -- run --repo /path/to/repo --task "build X"
+jarvis-harness run --repo /path/to/repo --task "build X"
 ```
 
 If a specific run needs one-off Codex `exec` flags, pass them through with repeated `--codex-arg` entries. Explicit `--codex-arg --model ...` overrides the environment default:
 
 ```bash
-npm run meta -- run --repo /path/to/repo --task "build X" --codex-arg --ignore-user-config --codex-arg --model --codex-arg gpt-5.5
+jarvis-harness run --repo /path/to/repo --task "build X" --codex-arg --ignore-user-config --codex-arg --model --codex-arg gpt-5.5
 ```
 
 The report is readable, but the JSON artifacts are authoritative. Do not report completion unless `policy-decision.json` says `accepted`.
@@ -54,7 +85,7 @@ For a new Codex session, give it this:
 
 ```text
 Use docs/meta-harness-new-session-usage.md and meta-harness/README.md.
-Use the meta-harness from /Users/levente/Documents/jarvis-2.
+Use the `jarvis-harness` CLI. If missing, install it from /Users/levente/Documents/jarvis-2 with `npm install -g .`.
 Target repo: /path/to/repo
 Task: <paste the exact task>
 Do not claim done unless policy-decision.json is accepted.
@@ -67,26 +98,26 @@ If blocked, name the external condition and what user/operator input is needed.
 Create or run a task packet:
 
 ```bash
-npm run meta -- run --repo /path/to/repo --task "build X"
-npm run meta -- init --repo /path/to/repo --task "build X"
-npm run meta -- run --run /path/to/repo/.task-runs/<id>
-npm run meta -- run --run /path/to/repo/.task-runs/<id> --dry-run
+jarvis-harness run --repo /path/to/repo --task "build X"
+jarvis-harness init --repo /path/to/repo --task "build X"
+jarvis-harness run --run /path/to/repo/.task-runs/<id>
+jarvis-harness run --run /path/to/repo/.task-runs/<id> --dry-run
 ```
 
 Verify and render:
 
 ```bash
-npm run meta -- verify --run /path/to/repo/.task-runs/<id>
-npm run meta -- report --run /path/to/repo/.task-runs/<id> --format text
-npm run meta -- report --run /path/to/repo/.task-runs/<id> --format html
+jarvis-harness verify --run /path/to/repo/.task-runs/<id>
+jarvis-harness report --run /path/to/repo/.task-runs/<id> --format text
+jarvis-harness report --run /path/to/repo/.task-runs/<id> --format html
 ```
 
 Repair or archive:
 
 ```bash
-npm run meta -- rerun --from /path/to/repo/.task-runs/<id>
-npm run meta -- promote-failure --run /path/to/repo/.task-runs/<id> --category missing-smoke --case-id browse-reset
-npm run meta -- cleanup --repo /path/to/repo --dry-run
+jarvis-harness rerun --from /path/to/repo/.task-runs/<id>
+jarvis-harness promote-failure --run /path/to/repo/.task-runs/<id> --category missing-smoke --case-id browse-reset
+jarvis-harness cleanup --repo /path/to/repo --dry-run
 ```
 
 Validate the harness itself:
@@ -163,7 +194,7 @@ Rejected runs are repair work by default:
 
 1. Read `Next action` in the report.
 2. Fix the implementation, proof plan, evidence, or final-report mismatch.
-3. Rerun `npm run meta -- verify --run <run-dir>`.
+3. Rerun `jarvis-harness verify --run <run-dir>`.
 4. Rerender the report.
 5. Stop only when `policy-decision.json` is `accepted` or a real blocker appears.
 
@@ -186,8 +217,8 @@ Blocked exits are loud:
 
 Resume after unblocking:
 
-- Implementation runner blocker: resolve the condition, then run `npm run meta -- run --run <run-dir>`.
-- Verification blocker: resolve the condition, then run `npm run meta -- verify --run <run-dir>`.
+- Implementation runner blocker: resolve the condition, then run `jarvis-harness run --run <run-dir>`.
+- Verification blocker: resolve the condition, then run `jarvis-harness verify --run <run-dir>`.
 
 ## Completion Notifications
 
@@ -246,7 +277,7 @@ npm run voovo:test-repairs
 
 ## Focused Component Commands
 
-The daily `npm run meta -- ...` facade is preferred. These lower-level scripts remain available for component work:
+The daily `jarvis-harness ...` facade is preferred. These lower-level scripts remain available for component work:
 
 ```bash
 npm run meta:init -- --repo /path/to/repo --task "build X"
