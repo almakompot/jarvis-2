@@ -10,6 +10,7 @@ import {
   readDashboardOutput,
   renderDashboardHtml,
   resolveDashboardArtifact,
+  startDashboardAction,
   startDashboardServer
 } from "../lib/dashboard.mjs";
 import { runFakeCodex } from "../lib/fake-runner.mjs";
@@ -88,6 +89,101 @@ test("dashboard summary labels terminal runner state as stopped, not running", (
   assert.equal(summary.status.runtimeText, "5m 0s");
   assert.equal(summary.status.stoppedAgoText, "15m 0s");
   assert.equal(summary.status.nextTransition, "repair implementation/proof -> rerun verification");
+});
+
+test("dashboard summary cannot show stopped while resume is running", (t) => {
+  const { repo, runDir } = createRun("dashboard-active-resume");
+  t.after(() => rmSync(repo, { recursive: true, force: true }));
+
+  const runnerPath = join(runDir, "runner-state.json");
+  const runnerState = readJson(runnerPath);
+  writeJson(runnerPath, {
+    ...runnerState,
+    createdAt: "2026-06-25T10:00:00.000Z",
+    updatedAt: "2026-06-25T10:05:00.000Z",
+    status: "rejected",
+    terminalState: {
+      ...runnerState.terminalState,
+      reason: "final-overclaim"
+    }
+  });
+  const activeActions = new Map([[
+    `${runDir}::resume`,
+    {
+      schemaVersion: 1,
+      kind: "meta-harness.dashboard-action",
+      id: "resume",
+      label: "Resume run",
+      runDir,
+      status: "running",
+      startedAt: "2026-06-25T10:20:00.000Z",
+      finishedAt: null,
+      message: null,
+      artifactPath: null
+    }
+  ]]);
+
+  const summary = buildDashboardSummary({
+    runDir,
+    activeActions,
+    now: new Date("2026-06-25T10:23:00.000Z")
+  });
+
+  assert.equal(summary.status.overall, "working");
+  assert.equal(summary.status.operatorStatus, "working");
+  assert.equal(summary.status.runner, "running");
+  assert.equal(summary.status.policy, "pending");
+  assert.equal(summary.status.phase, "run: Resume run");
+  assert.equal(summary.status.isTerminal, false);
+  assert.equal(summary.status.stoppedAt, null);
+  assert.equal(summary.status.elapsedText, "3m 0s");
+  assert.equal(summary.status.stoppedAgoText, null);
+  assert.equal(summary.status.repairReason, null);
+  assert.equal(summary.status.nextTransition, "wait for Resume run to finish");
+});
+
+test("dashboard resume action reuses a persisted live runner instead of starting another", async (t) => {
+  const { repo, runDir } = createRun("dashboard-persisted-running-resume");
+  t.after(() => rmSync(repo, { recursive: true, force: true }));
+
+  const runnerPath = join(runDir, "runner-state.json");
+  const runnerState = readJson(runnerPath);
+  writeJson(runnerPath, {
+    ...runnerState,
+    createdAt: "2026-06-25T10:20:00.000Z",
+    updatedAt: "2026-06-25T10:20:00.000Z",
+    status: "running",
+    process: {
+      pid: process.pid,
+      exitCode: null,
+      signal: null,
+      timedOut: false,
+      interrupted: false
+    },
+    terminalState: {
+      ...runnerState.terminalState,
+      exitCode: null,
+      signal: null,
+      reason: "running"
+    }
+  });
+
+  const summary = buildDashboardSummary({ runDir, now: new Date("2026-06-25T10:22:30.000Z") });
+  const resume = summary.actions.find((action) => action.id === "resume");
+
+  assert.equal(resume.status, "running");
+  assert.match(resume.message, new RegExp(String(process.pid)));
+  assert.equal(summary.status.runner, "running");
+  assert.equal(summary.status.isTerminal, false);
+  assert.equal(summary.status.elapsedText, "2m 30s");
+
+  const action = await startDashboardAction({
+    runDir,
+    action: "resume",
+    executable: "/definitely/not/codex"
+  });
+  assert.equal(action.status, "running");
+  assert.match(action.message, new RegExp(String(process.pid)));
 });
 
 test("dashboard output reader uses bounded tails", (t) => {

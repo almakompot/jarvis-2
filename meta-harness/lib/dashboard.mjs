@@ -70,6 +70,8 @@ export function buildDashboardSummary({ runDir, now = new Date(), activeActions 
   const proofObligations = summarizeProofObligations({ proofPlan, verification });
   const evidence = summarizeEvidence(verification);
   const changed = Array.isArray(changedFiles?.files) ? changedFiles.files : [];
+  const actions = summarizeDashboardActions({ runDir: absoluteRunDir, activeActions, runnerState });
+  const activeAction = activeDashboardAction(actions);
   const status = summarizeStatus({
     now,
     runnerConfig,
@@ -80,7 +82,8 @@ export function buildDashboardSummary({ runDir, now = new Date(), activeActions 
     finalReport,
     latestEvent,
     latestCommand,
-    spec
+    spec,
+    activeAction
   });
 
   return {
@@ -109,7 +112,7 @@ export function buildDashboardSummary({ runDir, now = new Date(), activeActions 
       reportText: `jarvis-harness report --run ${shellToken(absoluteRunDir)} --format text`,
       reportHtml: `jarvis-harness report --run ${shellToken(absoluteRunDir)} --format html`
     },
-    actions: summarizeDashboardActions({ runDir: absoluteRunDir, activeActions }),
+    actions,
     status,
     currentActivity: {
       phase: status.phase,
@@ -684,6 +687,14 @@ export async function startDashboardAction({
   if (existing?.status === "running") {
     return existing;
   }
+  if (spec.id === "resume") {
+    const runnerState = readJsonOptional(absoluteRunDir, "runner-state.json");
+    if (liveRunnerState(runnerState)) {
+      const runningState = actionStateFromRunnerState({ runDir: absoluteRunDir, spec, runnerState });
+      activeActions.set(key, runningState);
+      return runningState;
+    }
+  }
 
   const baseState = {
     schemaVersion: 1,
@@ -724,10 +735,19 @@ export async function startDashboardAction({
   }
 }
 
-function summarizeDashboardActions({ runDir, activeActions }) {
+function summarizeDashboardActions({ runDir, activeActions, runnerState }) {
   return Object.values(dashboardActionSpecs).map((spec) => {
     const active = activeActions?.get(dashboardActionKey({ runDir, action: spec.id }));
-    return active || {
+    if (active) {
+      return active;
+    }
+    const persisted = spec.id === "resume" && liveRunnerState(runnerState)
+      ? actionStateFromRunnerState({ runDir, spec, runnerState })
+      : null;
+    if (persisted) {
+      return persisted;
+    }
+    return {
       schemaVersion: 1,
       kind: "meta-harness.dashboard-action",
       id: spec.id,
@@ -740,6 +760,14 @@ function summarizeDashboardActions({ runDir, activeActions }) {
       artifactPath: null
     };
   });
+}
+
+function activeDashboardAction(actions) {
+  const running = (actions || []).filter((action) => action.status === "running");
+  return running.find((action) => action.id === "resume")
+    || running.find((action) => action.id === "verify")
+    || running[0]
+    || null;
 }
 
 async function executeDashboardAction({ runDir, spec, executable }) {
@@ -763,6 +791,21 @@ async function executeDashboardAction({ runDir, spec, executable }) {
 
 function dashboardActionKey({ runDir, action }) {
   return `${resolveRunDir(runDir)}::${action}`;
+}
+
+function actionStateFromRunnerState({ runDir, spec, runnerState }) {
+  return {
+    schemaVersion: 1,
+    kind: "meta-harness.dashboard-action",
+    id: spec.id,
+    label: spec.label,
+    runDir,
+    status: "running",
+    startedAt: runnerState.createdAt || runnerState.updatedAt || null,
+    finishedAt: null,
+    message: runnerState.process?.pid ? `runner pid ${runnerState.process.pid}` : "runner already running",
+    artifactPath: null
+  };
 }
 
 function handleDashboardRequest({ request, response, runDir, activeActions, executable }) {
@@ -834,19 +877,23 @@ function openCommandForPlatform({ url, platform }) {
   return null;
 }
 
-function summarizeStatus({ now, runnerConfig, runnerState, verification, verifierReport, policyDecision, finalReport, latestEvent, latestCommand, spec }) {
-  const runner = runnerState?.status || "pending";
-  const verificationStatus = verification?.status || "pending";
+function summarizeStatus({ now, runnerConfig, runnerState, verification, verifierReport, policyDecision, finalReport, latestEvent, latestCommand, spec, activeAction = null }) {
+  const active = activeAction?.status === "running" ? activeAction : null;
+  const runnerFromState = runnerState?.status || "pending";
+  const runner = active?.id === "resume" ? "running" : runnerFromState;
+  const verificationStatus = active?.id === "verify" ? "running" : verification?.status || "pending";
   const verifier = verifierReport?.recommendation || verifierReport?.status || "pending";
-  const policy = policyDecision?.decision || "not-run";
-  const internalOverall = policy !== "not-run" && policy !== "pending"
+  const policy = active ? "pending" : policyDecision?.decision || "not-run";
+  const internalOverall = active
+    ? activeInternalOverall(active)
+    : policy !== "not-run" && policy !== "pending"
     ? policy
     : runner === "implemented" && verificationStatus === "pending"
       ? "implemented"
       : runner;
-  const operatorStatus = operatorStatusFor({ runner, verificationStatus, verifier, policy });
-  const startedAt = runnerState?.createdAt || spec?.createdAt || finalReport?.createdAt || latestEvent?.timestamp || now.toISOString();
-  const stoppedAt = terminalRunnerStatus(runner) ? runnerState?.updatedAt || latestEvent?.timestamp || null : null;
+  const operatorStatus = active ? "working" : operatorStatusFor({ runner, verificationStatus, verifier, policy });
+  const startedAt = active?.startedAt || runnerState?.createdAt || spec?.createdAt || finalReport?.createdAt || latestEvent?.timestamp || now.toISOString();
+  const stoppedAt = active ? null : terminalRunnerStatus(runner) ? runnerState?.updatedAt || latestEvent?.timestamp || null : null;
   const elapsedMs = elapsedMilliseconds({ now, startedAt, stoppedAt });
   const stoppedAgoMs = stoppedAt ? Math.max(0, now.getTime() - Date.parse(stoppedAt)) : null;
   const latestCommandStatus = latestCommand ? commandStatus(latestCommand) : null;
@@ -858,10 +905,12 @@ function summarizeStatus({ now, runnerConfig, runnerState, verification, verifie
     verification: verificationStatus,
     verifier,
     policy,
-    phase: terminalRunnerStatus(runner)
+    phase: active
+      ? activeActionPhase(active)
+      : terminalRunnerStatus(runner)
       ? `stopped: ${runnerState?.terminalState?.reason || runner}`
       : latestEvent?.phase || latestCommand?.phase || runnerState?.terminalState?.reason || "pending",
-    isTerminal: terminalRunnerStatus(runner) || terminalPolicyStatus(policy),
+    isTerminal: active ? false : terminalRunnerStatus(runner) || terminalPolicyStatus(policy),
     startedAt,
     stoppedAt,
     elapsedMs,
@@ -869,20 +918,44 @@ function summarizeStatus({ now, runnerConfig, runnerState, verification, verifie
     runtimeText: formatDuration(elapsedMs),
     stoppedAgoText: stoppedAgoMs == null ? null : formatDuration(stoppedAgoMs),
     wallClockLimitMs: runnerConfig?.timeouts?.totalMs ?? null,
-    blockingReason: policyDecision?.decision === "blocked"
+    blockingReason: active ? null : policyDecision?.decision === "blocked"
       ? policyDecision.decisionReason
       : runner === "blocked"
         ? runnerState?.terminalState?.reason || "runner blocked"
         : null,
-    rejectReason: policyDecision?.decision === "rejected"
+    rejectReason: active ? null : policyDecision?.decision === "rejected"
       ? policyDecision.decisionReason
       : runner === "rejected"
         ? runnerState?.terminalState?.reason || "runner rejected"
         : null,
-    repairReason: repairReasonFor({ runner, policyDecision, runnerState, verifierReport }),
-    currentRisk: finalReport?.residualRisk?.[0] || policyDecision?.residualRisk?.[0] || missingRisk({ verificationStatus, policy, latestCommandStatus }),
-    nextTransition: nextTransition({ runner, verificationStatus, policy, operatorStatus })
+    repairReason: active ? null : repairReasonFor({ runner, policyDecision, runnerState, verifierReport }),
+    currentRisk: active
+      ? `${active.label} in progress; previous terminal decision is stale until it finishes`
+      : finalReport?.residualRisk?.[0] || policyDecision?.residualRisk?.[0] || missingRisk({ verificationStatus, policy, latestCommandStatus }),
+    nextTransition: active
+      ? `wait for ${active.label} to finish`
+      : nextTransition({ runner, verificationStatus, policy, operatorStatus })
   };
+}
+
+function activeInternalOverall(action) {
+  if (action.id === "resume") {
+    return "running";
+  }
+  if (action.id === "verify") {
+    return "verifying";
+  }
+  return "working";
+}
+
+function activeActionPhase(action) {
+  if (action.id === "resume") {
+    return `run: ${action.label}`;
+  }
+  if (action.id === "verify") {
+    return `verify: ${action.label}`;
+  }
+  return `action: ${action.label}`;
 }
 
 function summarizeRequirements({ spec, verification }) {
@@ -1077,6 +1150,23 @@ function terminalRunnerStatus(status) {
 
 function terminalPolicyStatus(status) {
   return ["accepted", "rejected", "blocked"].includes(status);
+}
+
+function liveRunnerState(runnerState) {
+  return runnerState?.status === "running" && processIsAlive(runnerState.process?.pid);
+}
+
+function processIsAlive(pid) {
+  const normalized = Number(pid);
+  if (!Number.isInteger(normalized) || normalized <= 0) {
+    return false;
+  }
+  try {
+    process.kill(normalized, 0);
+    return true;
+  } catch (error) {
+    return error?.code === "EPERM";
+  }
 }
 
 function elapsedMilliseconds({ now, startedAt, stoppedAt }) {

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -218,6 +218,34 @@ test("real Codex wrapper blocks timed-out Codex process", async (t) => {
   assertStructuralValidation(runDir);
 });
 
+test("real Codex wrapper persists running state while child process is alive", async (t) => {
+  const fakeCli = createFakeCodexCli(t);
+  const { repo, runDir } = createRun("codex-running-state");
+  t.after(() => rmSync(repo, { recursive: true, force: true }));
+
+  const pending = runCodexCli({
+    runDir,
+    executable: process.execPath,
+    executableArgs: [fakeCli],
+    extraArgs: ["--fake-scenario", "timeout"],
+    totalTimeoutMs: 1000
+  });
+  const running = await waitForRunnerState(runDir, "running");
+
+  assert.equal(running.status, "running");
+  assert.equal(running.mode, "codex-cli");
+  assert.equal(running.process.exitCode, null);
+  assert.equal(running.process.signal, null);
+  assert.equal(Number.isInteger(running.process.pid), true);
+  assert.equal(running.terminalState.reason, "running");
+  assert.equal(running.terminalState.stdoutPath, "evidence/runner/codex.stdout.jsonl");
+  assert.equal(running.captureCompleteness.terminalState, "pending");
+
+  const result = await pending;
+  assert.equal(result.status, "blocked");
+  assert.equal(result.runnerState.terminalState.reason, "timeout");
+});
+
 test("real Codex wrapper rejects final overclaim from Codex output", async (t) => {
   const fakeCli = createFakeCodexCli(t);
   const { repo, runDir } = createRun("codex-overclaim");
@@ -267,6 +295,20 @@ function createRun(runId) {
     runId
   }).runDir;
   return { repo, runDir };
+}
+
+async function waitForRunnerState(runDir, status) {
+  const path = join(runDir, "runner-state.json");
+  for (let index = 0; index < 50; index += 1) {
+    if (existsSync(path)) {
+      const state = readJson(path);
+      if (state.status === status) {
+        return state;
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  throw new Error(`Timed out waiting for runner-state.json status ${status}`);
 }
 
 function createFakeCodexCli(t) {

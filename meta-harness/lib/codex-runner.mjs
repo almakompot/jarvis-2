@@ -271,6 +271,13 @@ export async function runCodexCli({
     stdio: ["pipe", "pipe", "pipe"]
   });
   state.pid = child.pid ?? null;
+  writeJson(join(absoluteRunDir, "runner-state.json"), buildRunningRunnerState({
+    state,
+    startedAt,
+    stdoutPath,
+    stderrPath,
+    dryRun
+  }));
   child.stdin.on("error", (error) => {
     stdinError = error;
   });
@@ -875,6 +882,61 @@ function buildRunnerState({ state, status, terminal, timedOut, interrupted, stdo
     note: status === "implemented"
       ? "Codex CLI attempt ended cleanly. Later verification and policy still decide acceptance."
       : "Codex CLI attempt did not reach an acceptable runner state."
+  };
+}
+
+function buildRunningRunnerState({ state, startedAt, stdoutPath, stderrPath, dryRun }) {
+  return {
+    schemaVersion: 1,
+    kind: "meta-harness.runner-state",
+    runId: state.runId,
+    createdAt: startedAt || state.createdAt,
+    updatedAt: startedAt || state.createdAt,
+    status: "running",
+    mode: "codex-cli",
+    dryRun,
+    cwd: state.repoPath,
+    process: {
+      pid: state.pid,
+      exitCode: null,
+      signal: null,
+      timedOut: false,
+      interrupted: false
+    },
+    activeState: {
+      cwd: state.repoPath,
+      reason: "runner process started",
+      stdoutPath: relativeArtifact(state.runDir, stdoutPath),
+      stderrPath: relativeArtifact(state.runDir, stderrPath)
+    },
+    terminalState: {
+      cwd: state.repoPath,
+      exitCode: null,
+      signal: null,
+      reason: "running",
+      stdoutPath: relativeArtifact(state.runDir, stdoutPath),
+      stderrPath: relativeArtifact(state.runDir, stderrPath)
+    },
+    counters: {
+      transcriptEntries: state.transcriptEntries.length,
+      commandEntries: state.commandEntries.length,
+      changedFiles: 0,
+      events: state.events.length
+    },
+    failures: state.failures,
+    warnings: state.warnings,
+    captureCompleteness: {
+      transcript: "running",
+      commandLog: "running",
+      diff: "pending",
+      changedFiles: "pending",
+      terminalState: "pending"
+    },
+    cli: {
+      version: state.cliInfo.version,
+      supports: state.cliInfo.supports
+    },
+    note: "Codex CLI attempt is running. Terminal verification and policy acceptance are pending."
   };
 }
 
