@@ -1,8 +1,10 @@
+import { execFile } from "node:child_process";
 import { createServer } from "node:http";
 import { createReadStream, existsSync, readdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, join, relative, resolve } from "node:path";
 import process from "node:process";
+import { promisify } from "node:util";
 
 import {
   buildDashboardSummary,
@@ -16,6 +18,7 @@ import { runMetaCommand } from "./report-ux.mjs";
 import { initTaskRun } from "./task-packet.mjs";
 
 const defaultHost = "127.0.0.1";
+const execFileAsync = promisify(execFile);
 const ignoredScanDirs = new Set([
   ".git",
   ".next",
@@ -34,7 +37,8 @@ export async function startWebAppServer({
   scanRoots = null,
   cwd = process.cwd(),
   executable = "codex",
-  env = process.env
+  env = process.env,
+  folderPicker = chooseLocalFolder
 } = {}) {
   const activeRuns = new Map();
   const roots = normalizeScanRoots(scanRoots || defaultScanRoots({ cwd }));
@@ -45,7 +49,8 @@ export async function startWebAppServer({
       scanRoots: roots,
       activeRuns,
       executable,
-      env
+      env,
+      folderPicker
     }).catch((error) => {
       sendJson(response, 500, { error: error.message || String(error) });
     });
@@ -182,6 +187,13 @@ export function renderWebAppHtml() {
       background: var(--soft);
     }
     button:disabled { color: var(--muted); cursor: wait; }
+    .path-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 150px;
+      gap: var(--space-1);
+      align-items: end;
+    }
+    .path-row input, .path-row button { margin-top: var(--space-1); }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -216,7 +228,11 @@ export function renderWebAppHtml() {
         <section>
           <h2>Start Run</h2>
           <form id="run-form">
-            <label>Repo path<input id="repo-path" name="repoPath" autocomplete="off" required></label>
+            <label for="repo-path">Repo folder</label>
+            <div class="path-row">
+              <input id="repo-path" name="repoPath" autocomplete="off" required>
+              <button id="repo-picker" type="button">Choose folder</button>
+            </div>
             <label>Task<textarea id="task" name="task" required></textarea></label>
             <label>Run id<input id="run-id" name="runId" autocomplete="off"></label>
             <label>Mode<select id="mode" name="mode"><option value="run">run now</option><option value="init">init only</option></select></label>
@@ -241,6 +257,8 @@ export function renderWebAppHtml() {
     const runsBody = document.getElementById("runs");
     const roots = document.getElementById("roots");
     const form = document.getElementById("run-form");
+    const repoInput = document.getElementById("repo-path");
+    const repoPicker = document.getElementById("repo-picker");
     const startButton = document.getElementById("start-button");
     const formStatus = document.getElementById("form-status");
 
@@ -289,13 +307,41 @@ export function renderWebAppHtml() {
       return td;
     }
 
+    repoPicker.addEventListener("click", async () => {
+      repoPicker.disabled = true;
+      formStatus.className = "meta";
+      formStatus.textContent = "opening folder picker";
+      try {
+        const res = await fetch("/api/folder-picker", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ purpose: "repo" })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "folder picker failed");
+        if (data.status === "selected" && data.path) {
+          repoInput.value = data.path;
+          formStatus.textContent = "selected " + data.path;
+        } else if (data.status === "cancelled") {
+          formStatus.textContent = "folder picker cancelled";
+        } else {
+          throw new Error(data.error || data.reason || "folder picker is not available");
+        }
+      } catch (error) {
+        formStatus.textContent = error.message || String(error);
+        formStatus.className = "error";
+      } finally {
+        repoPicker.disabled = false;
+      }
+    });
+
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       startButton.disabled = true;
       formStatus.textContent = "starting";
       try {
         const payload = {
-          repoPath: document.getElementById("repo-path").value,
+          repoPath: repoInput.value,
           task: document.getElementById("task").value,
           runId: document.getElementById("run-id").value,
           mode: document.getElementById("mode").value
@@ -386,7 +432,74 @@ export function defaultScanRoots({ cwd = process.cwd(), home = homedir() } = {})
   return unique(roots);
 }
 
-async function handleWebRequest({ request, response, scanRoots, activeRuns, executable, env }) {
+export async function chooseLocalFolder({
+  platform = process.platform,
+  prompt = "Choose harness repo folder",
+  execFilePromise = execFileAsync
+} = {}) {
+  const command = buildFolderPickerCommand({ platform, prompt });
+  if (!command) {
+    return folderPickerResult("unsupported", {
+      reason: `Native folder picker is not supported on ${platform}.`
+    });
+  }
+
+  try {
+    const result = await execFilePromise(command.file, command.args, {
+      timeout: 120000,
+      windowsHide: false
+    });
+    const pickedPath = String(result.stdout || "").trim();
+    if (!pickedPath) {
+      return folderPickerResult("cancelled");
+    }
+    return folderPickerResult("selected", { path: pickedPath });
+  } catch (error) {
+    if (isFolderPickerCancel(error, platform)) {
+      return folderPickerResult("cancelled");
+    }
+    return folderPickerResult("failed", {
+      error: error.stderr?.trim() || error.message || String(error)
+    });
+  }
+}
+
+export function buildFolderPickerCommand({ platform = process.platform, prompt = "Choose harness repo folder" } = {}) {
+  if (platform === "darwin") {
+    return {
+      file: "osascript",
+      args: ["-e", `POSIX path of (choose folder with prompt ${appleScriptString(prompt)})`]
+    };
+  }
+  if (platform === "win32") {
+    const description = powerShellString(prompt);
+    return {
+      file: "powershell.exe",
+      args: [
+        "-NoProfile",
+        "-STA",
+        "-Command",
+        [
+          "$ErrorActionPreference = 'Stop'",
+          "Add-Type -AssemblyName System.Windows.Forms",
+          "$dialog = New-Object System.Windows.Forms.FolderBrowserDialog",
+          `$dialog.Description = ${description}`,
+          "$dialog.ShowNewFolderButton = $false",
+          "if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { [Console]::WriteLine($dialog.SelectedPath) } else { exit 2 }"
+        ].join("; ")
+      ]
+    };
+  }
+  if (platform === "linux") {
+    return {
+      file: "zenity",
+      args: ["--file-selection", "--directory", "--title", prompt]
+    };
+  }
+  return null;
+}
+
+async function handleWebRequest({ request, response, scanRoots, activeRuns, executable, env, folderPicker }) {
   const url = new URL(request.url || "/", "http://127.0.0.1");
   try {
     if (request.method === "GET" && url.pathname === "/") {
@@ -413,6 +526,12 @@ async function handleWebRequest({ request, response, scanRoots, activeRuns, exec
       const body = await readJsonBody(request);
       const started = startWebRun({ body, activeRuns, executable });
       sendJson(response, 202, started);
+      return;
+    }
+    if (request.method === "POST" && url.pathname === "/api/folder-picker") {
+      const body = await readJsonBody(request);
+      const prompt = body.purpose === "repo" ? "Choose harness repo folder" : "Choose folder";
+      sendJson(response, 200, await folderPicker({ prompt }));
       return;
     }
 
@@ -621,6 +740,37 @@ function normalizeScanRoots(scanRoots) {
   return unique((Array.isArray(scanRoots) ? scanRoots : [scanRoots])
     .filter(Boolean)
     .map((root) => resolve(String(root))));
+}
+
+function folderPickerResult(status, extra = {}) {
+  return {
+    schemaVersion: 1,
+    kind: "meta-harness.folder-picker",
+    status,
+    ...extra
+  };
+}
+
+function isFolderPickerCancel(error, platform) {
+  const stderr = String(error.stderr || "");
+  if (platform === "darwin") {
+    return error.code === 1 && (stderr.includes("User canceled") || stderr.includes("-128"));
+  }
+  if (platform === "win32") {
+    return error.code === 2;
+  }
+  if (platform === "linux") {
+    return error.code === 1;
+  }
+  return false;
+}
+
+function appleScriptString(value) {
+  return `"${String(value).replaceAll("\\", "\\\\").replaceAll("\"", "\\\"")}"`;
+}
+
+function powerShellString(value) {
+  return `'${String(value).replaceAll("'", "''")}'`;
 }
 
 function safeReadDir(dir) {

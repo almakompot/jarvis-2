@@ -10,6 +10,7 @@
 - Main page lists discovered `.task-runs` folders and starts new runs.
 - Each run opens on its own `/runs/<token>` page using the existing dashboard detail view.
 - JSON artifacts remain authoritative. The web app is a convenience surface, not a separate state store.
+- Repo selection should use a native local folder picker from the web surface. A pasteable path input may remain as fallback, but the primary flow is choose folder through Finder/Explorer or the platform equivalent.
 
 ## Command
 
@@ -25,7 +26,7 @@ The main page must stay operational and plain:
 
 - doctor status
 - scan roots
-- start-run form with repo path, task, optional run id, and mode
+- start-run form with repo folder picker, pasteable repo path fallback, task, optional run id, and mode
 - active/recent run table with operator status, run id, task, repo, and updated time
 - links to per-run detail pages
 
@@ -44,6 +45,7 @@ GET  /
 GET  /api/doctor
 GET  /api/runs
 POST /api/runs
+POST /api/folder-picker
 GET  /runs/<token>
 GET  /api/run/<token>/summary
 GET  /api/run/<token>/events
@@ -52,6 +54,8 @@ GET  /api/run/<token>/artifact?path=<artifact>
 ```
 
 Run tokens encode absolute run-directory paths, but the server must reject tokens that do not point at a real `.task-runs/<id>` directory. Artifact reads must reuse the dashboard artifact guard and reject path traversal, `.env*`, `.git`, private keys, service-account files, and secret transcript paths.
+
+`POST /api/folder-picker` opens a native local directory picker from the server process and returns `{ status: "selected", path }`, `{ status: "cancelled" }`, or a non-selected status with a reason/error. It must be injectable in tests so automated checks do not open a real OS dialog.
 
 ## Verification
 

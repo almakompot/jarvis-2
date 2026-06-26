@@ -5,6 +5,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import {
+  buildFolderPickerCommand,
   encodeRunToken,
   listHarnessRuns,
   renderWebAppHtml,
@@ -35,6 +36,8 @@ test("web app lists discovered runs and serves dashboard detail routes", async (
   assert.match(html, /JARVIS HARNESS/);
   assert.match(html, /Start Run/);
   assert.match(html, /Runs/);
+  assert.match(html, /Choose folder/);
+  assert.match(html, /\/api\/folder-picker/);
   assert.doesNotMatch(html, /@media/);
 
   const doctor = await (await fetch(new URL("/api/doctor", server.url))).json();
@@ -66,6 +69,52 @@ test("web app lists discovered runs and serves dashboard detail routes", async (
   const badSummary = await fetch(new URL(`/api/run/${badToken}/summary`, server.url));
   assert.equal(badSummary.status, 400);
   assert.match(await badSummary.text(), /harness run directory/);
+});
+
+test("web app exposes a local folder picker endpoint for repo path selection", async (t) => {
+  const repo = createRepo("webapp-picker");
+  t.after(() => rmSync(repo, { recursive: true, force: true }));
+
+  const server = await startWebAppServer({
+    scanRoots: [repo],
+    port: 0,
+    executable: writeFakeCodex(repo),
+    folderPicker: async ({ prompt }) => ({
+      schemaVersion: 1,
+      kind: "meta-harness.folder-picker",
+      status: "selected",
+      path: repo,
+      prompt
+    })
+  });
+  t.after(async () => {
+    await server.close();
+  });
+
+  const selected = await fetch(new URL("/api/folder-picker", server.url), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ purpose: "repo" })
+  });
+  assert.equal(selected.status, 200);
+  const payload = await selected.json();
+  assert.equal(payload.status, "selected");
+  assert.equal(payload.path, repo);
+  assert.equal(payload.prompt, "Choose harness repo folder");
+});
+
+test("folder picker command uses native OS folder selection surfaces", () => {
+  const mac = buildFolderPickerCommand({ platform: "darwin", prompt: "Pick \"repo\"" });
+  assert.equal(mac.file, "osascript");
+  assert.match(mac.args.join(" "), /choose folder/);
+
+  const windows = buildFolderPickerCommand({ platform: "win32", prompt: "Pick repo" });
+  assert.equal(windows.file, "powershell.exe");
+  assert.match(windows.args.join(" "), /FolderBrowserDialog/);
+
+  const linux = buildFolderPickerCommand({ platform: "linux", prompt: "Pick repo" });
+  assert.equal(linux.file, "zenity");
+  assert.deepEqual(linux.args.slice(0, 3), ["--file-selection", "--directory", "--title"]);
 });
 
 test("web app starts a run through the normal run folder and redirects to detail", async (t) => {
@@ -132,6 +181,7 @@ test("web app HTML is minimal desktop-only local harness UI", () => {
   assert.match(html, /--min-width: 1280px/);
   assert.match(html, /\/api\/runs/);
   assert.match(html, /\/api\/doctor/);
+  assert.match(html, /\/api\/folder-picker/);
   assert.doesNotMatch(html, /@media/);
 });
 
