@@ -26,6 +26,9 @@ test("dashboard summary renders an initialized pending run with missing-file tol
   assert.equal(summary.runId, "dashboard-pending");
   assert.equal(summary.status.overall, "working");
   assert.equal(summary.status.operatorStatus, "working");
+  assert.equal(summary.status.executionStatus, "pending");
+  assert.equal(summary.status.displayStatus, "pending");
+  assert.equal(summary.status.activityText, "not started");
   assert.equal(summary.status.wallClockLimitMs, null);
   assert.ok(summary.requirements.length > 0);
   assert.ok(summary.proofObligations.length > 0);
@@ -83,12 +86,31 @@ test("dashboard summary labels terminal runner state as stopped, not running", (
   const summary = buildDashboardSummary({ runDir, now: new Date("2026-06-25T10:20:00.000Z") });
 
   assert.equal(summary.status.overall, "repairing");
+  assert.equal(summary.status.executionStatus, "stopped");
+  assert.equal(summary.status.displayStatus, "stopped");
   assert.equal(summary.status.isTerminal, true);
   assert.equal(summary.status.phase, "stopped: final-overclaim");
   assert.equal(summary.status.elapsedText, "5m 0s");
   assert.equal(summary.status.runtimeText, "5m 0s");
   assert.equal(summary.status.stoppedAgoText, "15m 0s");
+  assert.equal(summary.status.activityText, "stopped 15m 0s ago; runtime 5m 0s");
   assert.equal(summary.status.nextTransition, "repair implementation/proof -> rerun verification");
+});
+
+test("dashboard summary displays a stopped runner separately from working operator state", async (t) => {
+  const { repo, runDir } = createRun("dashboard-implemented-pending-proof");
+  t.after(() => rmSync(repo, { recursive: true, force: true }));
+  await runFakeCodex({ runDir, scenario: "success", now: new Date("2026-06-25T10:00:00.000Z") });
+
+  const summary = buildDashboardSummary({ runDir, now: new Date("2026-06-25T10:20:00.000Z") });
+
+  assert.equal(summary.status.runner, "implemented");
+  assert.equal(summary.status.operatorStatus, "working");
+  assert.equal(summary.status.overall, "working");
+  assert.equal(summary.status.executionStatus, "stopped");
+  assert.equal(summary.status.displayStatus, "stopped");
+  assert.equal(summary.status.isTerminal, true);
+  assert.match(summary.status.activityText, /^stopped .* ago; runtime /);
 });
 
 test("dashboard summary cannot show stopped while resume is running", (t) => {
@@ -131,6 +153,8 @@ test("dashboard summary cannot show stopped while resume is running", (t) => {
 
   assert.equal(summary.status.overall, "working");
   assert.equal(summary.status.operatorStatus, "working");
+  assert.equal(summary.status.executionStatus, "running");
+  assert.equal(summary.status.displayStatus, "running");
   assert.equal(summary.status.runner, "running");
   assert.equal(summary.status.policy, "pending");
   assert.equal(summary.status.phase, "run: Resume run");
@@ -138,6 +162,7 @@ test("dashboard summary cannot show stopped while resume is running", (t) => {
   assert.equal(summary.status.stoppedAt, null);
   assert.equal(summary.status.elapsedText, "3m 0s");
   assert.equal(summary.status.stoppedAgoText, null);
+  assert.equal(summary.status.activityText, "running 3m 0s");
   assert.equal(summary.status.repairReason, null);
   assert.equal(summary.status.nextTransition, "wait for Resume run to finish");
 });
@@ -174,8 +199,11 @@ test("dashboard resume action reuses a persisted live runner instead of starting
   assert.equal(resume.status, "running");
   assert.match(resume.message, new RegExp(String(process.pid)));
   assert.equal(summary.status.runner, "running");
+  assert.equal(summary.status.executionStatus, "running");
+  assert.equal(summary.status.displayStatus, "running");
   assert.equal(summary.status.isTerminal, false);
   assert.equal(summary.status.elapsedText, "2m 30s");
+  assert.equal(summary.status.activityText, "running 2m 30s");
 
   const action = await startDashboardAction({
     runDir,
@@ -242,6 +270,10 @@ test("dashboard server serves HTML, JSON endpoints, artifact files, and traversa
   const summary = await (await fetch(new URL("/api/summary", server.url))).json();
   assert.equal(summary.runId, "dashboard-server");
   assert.equal(summary.status.runner, "implemented");
+  assert.equal(summary.status.operatorStatus, "working");
+  assert.equal(summary.status.executionStatus, "stopped");
+  assert.equal(summary.status.displayStatus, "stopped");
+  assert.match(summary.status.activityText, /^stopped .* ago; runtime /);
   assert.ok(summary.changedFiles.files.some((file) => file.path === "src/site-gate.js"));
   assert.ok(summary.actions.some((action) => action.label === "Run verification"));
   assert.ok(summary.actions.some((action) => action.label === "HTML report"));
@@ -352,6 +384,8 @@ test("dashboard HTML is desktop-only and file-backed", () => {
   assert.match(html, /action-button/);
   assert.match(html, /postAction\(action\.id, button\)/);
   assert.match(html, /apiBase \+ "\/action"/);
+  assert.match(html, /s\.displayStatus \|\| s\.executionStatus \|\| s\.overall/);
+  assert.match(html, /s\.activityText/);
   assert.match(html, /<tbody id="actions"><\/tbody>/);
   assert.doesNotMatch(html, /text-overflow: ellipsis/);
   assert.doesNotMatch(html, /grid-template-columns: calc\(var\(--dashboard-width\)/);

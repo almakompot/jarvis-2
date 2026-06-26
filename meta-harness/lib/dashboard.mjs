@@ -296,7 +296,7 @@ export function renderDashboardHtml({ apiBase = "/api", homeHref = null } = {}) 
       text-transform: uppercase;
     }
     .status.finished, .status.accepted, .pass { color: var(--pass); }
-    .status.repairing, .status.working, .status.pending, .pending { color: var(--pending); }
+    .status.repairing, .status.working, .status.pending, .status.running, .status.stopped, .pending { color: var(--pending); }
     .status.blocked, .warn { color: var(--warn); }
     .fail { color: var(--fail); }
     .action-strip {
@@ -555,9 +555,10 @@ export function renderDashboardHtml({ apiBase = "/api", homeHref = null } = {}) 
       const summary = await summaryRes.json();
       const output = await outputRes.json();
       const s = summary.status || {};
-      statusEl.textContent = s.overall || "pending";
-      statusEl.className = "status " + (s.overall || "pending");
-      setText("elapsed", s.isTerminal ? "stopped " + text(s.stoppedAgoText) + " ago; runtime " + text(s.runtimeText) : "running " + text(s.elapsedText));
+      const displayStatus = s.displayStatus || s.executionStatus || s.overall || "pending";
+      statusEl.textContent = displayStatus;
+      statusEl.className = "status " + displayStatus;
+      setText("elapsed", s.activityText || (s.isTerminal ? "stopped " + text(s.stoppedAgoText) + " ago; runtime " + text(s.runtimeText) : "running " + text(s.elapsedText)));
       setText("timeout", "wall-clock limit " + (s.wallClockLimitMs == null ? "none" : s.wallClockLimitMs + "ms"));
       setText("task", "Task: " + text(summary.task && summary.task.title));
       setText("repo", "Repo: " + text(summary.repo && summary.repo.name) + "  Branch: " + text(summary.repo && summary.repo.branch) + "  Run: " + text(summary.runId));
@@ -897,9 +898,16 @@ function summarizeStatus({ now, runnerConfig, runnerState, verification, verifie
   const elapsedMs = elapsedMilliseconds({ now, startedAt, stoppedAt });
   const stoppedAgoMs = stoppedAt ? Math.max(0, now.getTime() - Date.parse(stoppedAt)) : null;
   const latestCommandStatus = latestCommand ? commandStatus(latestCommand) : null;
+  const isTerminal = active ? false : terminalRunnerStatus(runner) || terminalPolicyStatus(policy);
+  const executionStatus = executionStatusFor({ active, runner, isTerminal });
+  const elapsedText = formatDuration(elapsedMs);
+  const runtimeText = formatDuration(elapsedMs);
+  const stoppedAgoText = stoppedAgoMs == null ? null : formatDuration(stoppedAgoMs);
   return {
     overall: operatorStatus,
     operatorStatus,
+    executionStatus,
+    displayStatus: executionStatus,
     internalOverall,
     runner,
     verification: verificationStatus,
@@ -910,13 +918,14 @@ function summarizeStatus({ now, runnerConfig, runnerState, verification, verifie
       : terminalRunnerStatus(runner)
       ? `stopped: ${runnerState?.terminalState?.reason || runner}`
       : latestEvent?.phase || latestCommand?.phase || runnerState?.terminalState?.reason || "pending",
-    isTerminal: active ? false : terminalRunnerStatus(runner) || terminalPolicyStatus(policy),
+    isTerminal,
     startedAt,
     stoppedAt,
     elapsedMs,
-    elapsedText: formatDuration(elapsedMs),
-    runtimeText: formatDuration(elapsedMs),
-    stoppedAgoText: stoppedAgoMs == null ? null : formatDuration(stoppedAgoMs),
+    elapsedText,
+    runtimeText,
+    stoppedAgoText,
+    activityText: activityTextFor({ executionStatus, elapsedText, runtimeText, stoppedAgoText }),
     wallClockLimitMs: runnerConfig?.timeouts?.totalMs ?? null,
     blockingReason: active ? null : policyDecision?.decision === "blocked"
       ? policyDecision.decisionReason
@@ -956,6 +965,32 @@ function activeActionPhase(action) {
     return `verify: ${action.label}`;
   }
   return `action: ${action.label}`;
+}
+
+function executionStatusFor({ active, runner, isTerminal }) {
+  if (active || runner === "running") {
+    return "running";
+  }
+  if (isTerminal) {
+    return "stopped";
+  }
+  if (runner === "pending") {
+    return "pending";
+  }
+  return runner || "pending";
+}
+
+function activityTextFor({ executionStatus, elapsedText, runtimeText, stoppedAgoText }) {
+  if (executionStatus === "running") {
+    return `running ${elapsedText || "0s"}`;
+  }
+  if (executionStatus === "stopped") {
+    return `stopped ${stoppedAgoText || "0s"} ago; runtime ${runtimeText || "0s"}`;
+  }
+  if (executionStatus === "pending") {
+    return "not started";
+  }
+  return `${executionStatus} ${elapsedText || "0s"}`;
 }
 
 function summarizeRequirements({ spec, verification }) {
