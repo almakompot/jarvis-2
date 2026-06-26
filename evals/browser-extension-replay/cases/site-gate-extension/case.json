@@ -7,7 +7,7 @@
   "controllingSections": ["19", "20", "21", "24", "25", "30", "31", "33"],
   "runId": "browser-extension-site-gate",
   "task": {
-    "raw": "Build a Chrome extension that asks before opening a site, with Actually no, 1 min, 5 min, custom minutes, invalid custom-minute validation, same-origin reuse after allow, and decline-to-blocked behavior.",
+    "raw": "Build a Chrome extension that asks before opening a site, with Actually no closing the tab, Escape triggering Actually no, 10 sec, 1 min, 5 min, decimal custom minutes, invalid custom-minute validation, same-origin reuse after allow, and close-on-expiry behavior.",
     "workedExample": "Site Gate Browser Extension"
   },
   "fixture": {

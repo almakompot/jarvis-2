@@ -1,4 +1,5 @@
 const ALLOWANCES_KEY = "siteGateAllowances";
+const EXPIRY_ALARM_PREFIX = "siteGateExpiry:";
 const MAX_CUSTOM_MINUTES = 24 * 60;
 
 chrome.webNavigation.onBeforeNavigate.addListener((details) => {
@@ -22,6 +23,12 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     .then((response) => sendResponse(response))
     .catch((error) => sendResponse({ ok: false, error: error.message || String(error) }));
   return true;
+});
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name.startsWith(EXPIRY_ALARM_PREFIX)) {
+    void handleAllowanceExpiry(alarm.name.slice(EXPIRY_ALARM_PREFIX.length));
+  }
 });
 
 async function handleNavigation(details) {
@@ -59,7 +66,7 @@ async function handleMessage(message) {
   if (message.type === "decline") {
     const targetUrl = requireTargetUrl(message.targetUrl);
     const tabId = normalizeTabId(message.tabId);
-    await updateTab(tabId, chrome.runtime.getURL(`blocked.html?target=${encodeURIComponent(targetUrl)}`));
+    await closeTab(tabId);
     return { ok: true };
   }
 
@@ -118,10 +125,43 @@ async function getAllowedUntil(origin) {
 async function allowOriginFor(origin, minutes) {
   const state = await chrome.storage.local.get(ALLOWANCES_KEY);
   const allowances = state[ALLOWANCES_KEY] || {};
-  allowances[origin] = Date.now() + minutes * 60 * 1000;
+  const allowedUntil = Date.now() + minutes * 60 * 1000;
+  allowances[origin] = allowedUntil;
+  await chrome.storage.local.set({ [ALLOWANCES_KEY]: allowances });
+  chrome.alarms.create(`${EXPIRY_ALARM_PREFIX}${origin}`, { when: allowedUntil });
+}
+
+async function handleAllowanceExpiry(origin) {
+  const allowedUntil = await getAllowedUntil(origin);
+  const now = Date.now();
+  if (allowedUntil > now) {
+    chrome.alarms.create(`${EXPIRY_ALARM_PREFIX}${origin}`, { when: allowedUntil });
+    return;
+  }
+
+  await removeAllowance(origin);
+  const tabs = await chrome.tabs.query({});
+  await Promise.all(tabs.map(async (tab) => {
+    const targetUrl = normalizeTargetUrl(tab.url);
+    if (!targetUrl || originFromUrl(targetUrl) !== origin || !Number.isInteger(tab.id)) {
+      return;
+    }
+
+    await closeTab(tab.id);
+  }));
+}
+
+async function removeAllowance(origin) {
+  const state = await chrome.storage.local.get(ALLOWANCES_KEY);
+  const allowances = state[ALLOWANCES_KEY] || {};
+  delete allowances[origin];
   await chrome.storage.local.set({ [ALLOWANCES_KEY]: allowances });
 }
 
 function updateTab(tabId, url) {
   return chrome.tabs.update(tabId, { url });
+}
+
+function closeTab(tabId) {
+  return chrome.tabs.remove(tabId);
 }

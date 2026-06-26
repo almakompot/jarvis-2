@@ -138,12 +138,10 @@ export function resetBrowse() {
     emit({
       type: "command",
       phase: "inspect",
-      command: "find manifest.json background.js gate.html gate.js blocked.html blocked.js scripts -type f | sort",
+      command: "find manifest.json background.js gate.html gate.js scripts -type f | sort",
       exitCode: 0,
       stdout: [
         "background.js",
-        "blocked.html",
-        "blocked.js",
         "gate.html",
         "gate.js",
         "manifest.json",
@@ -152,7 +150,7 @@ export function resetBrowse() {
         "scripts/validate-extension.mjs"
       ].join("\n") + "\n"
     });
-    emit({ type: "inspection", message: "Manifest V3, background service worker, gate/blocked pages, and smoke scripts inspected before verification." });
+    emit({ type: "inspection", message: "Manifest V3, background service worker, gate page, and smoke scripts inspected before verification." });
     emit({
       type: "command",
       phase: "verify",

@@ -107,7 +107,7 @@ The current compiler is intentionally conservative. It preserves the raw request
 
 The acceptance gate exists in `evals/acceptance-gate`. It is an early independent verifier for disciplined Codex runs. It rejects missing prompt input, edits before inspection, forbidden file edits, missing verification, failed verification reported as passed, unknown evidence citations, missing proof obligation results, unaccepted evidence types, and missing declared proof artifacts.
 
-The Site Gate extension smoke exists in `apps/site-gate-extension`. It is a concrete browser-extension example with a real Chromium smoke flow. It verifies the gate page, invalid custom minutes, one-minute allow, five-minute allow, custom allow, same-origin reuse, and decline-to-blocked behavior. It also records local evidence.
+The Site Gate extension smoke exists in `apps/site-gate-extension`. It is a concrete browser-extension example with a real Chromium smoke flow. It verifies the gate page, invalid custom minutes, ten-second allow, one-minute allow, five-minute allow, decimal custom allow, same-origin reuse, close-on-expiry, and close-on-decline behavior. It also records local evidence.
 
 The VOOVO replay harness exists in `evals/voovo-pr-replay`. It is a scaffold for counterfactual PR replay and structured comparison. It has safety gates for leakage, command guards, manual proof validation, and replay case validation.
 
@@ -901,7 +901,7 @@ Generated requirements:
 - `R1`: create Manifest V3 extension with background service worker and gate page.
 - `R2`: first navigation to HTTP/HTTPS target opens gate before continuing.
 - `R3`: 1 min, 5 min, and custom minutes allow target and persist per origin.
-- `R4`: Actually no prevents target and opens blocked page.
+- `R4`: Actually no prevents the target and closes the tab.
 - `R5`: invalid custom minutes stay on gate with visible validation.
 - `R6`: real browser smoke verifies extension behavior.
 
@@ -926,7 +926,7 @@ Expected evidence:
 - `tmp/site-gate-smoke/scenario.json`
 - command logs
 - browser target URL assertions
-- gate and blocked page text assertions
+- gate text, expiry, and tab-close assertions
 
 Possible verifier rejection:
 

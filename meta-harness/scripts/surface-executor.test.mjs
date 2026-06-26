@@ -66,7 +66,7 @@ test("surface executor accepts browser-extension proof only with extension scena
         status: "passed",
         url: "chrome-extension://abc123/gate.html",
         extensionLoaded: true,
-        assertions: ["decline redirects to blocked page", "five minute allow persists"],
+        assertions: ["decline closes the tab", "five minute allow persists"],
         screenshotPath: "gate-screenshot.txt"
       }, null, 2),
       "smoke/gate-screenshot.txt": "fake screenshot bytes\n"

@@ -40,7 +40,10 @@ async function runSmoke(browserPath) {
     startSite("one"),
     startSite("two"),
     startSite("three"),
-    startSite("four")
+    startSite("four"),
+    startSite("five"),
+    startSite("six"),
+    startSite("seven")
   ]);
   state.servers.push(...sites.map((site) => site.server));
 
@@ -90,17 +93,20 @@ async function runSmoke(browserPath) {
   await waitForGateReady(cdp);
   assertIncludes(gateUrl, encodeURIComponent(first), "gate URL should preserve target URL");
   await assertTextIncludes(cdp, "Do you want to open this site?");
+  const firstGateLayout = await readGateLayout(cdp);
+  assertGateRandomized(firstGateLayout);
   trace.push({ action: "gate-render", target: first, observedUrl: gateUrl });
+  trace.push({ action: "randomized-gate-layout", layout: firstGateLayout });
 
   await evaluate(cdp, "document.querySelector('#minutes').value = '0'; document.querySelector('#custom-form').requestSubmit();");
-  await assertTextIncludes(cdp, "Enter a whole number of minutes");
+  await assertTextIncludes(cdp, "Enter minutes greater than 0");
   assertIncludes(await currentUrl(cdp), "/gate.html", "invalid custom minutes should stay on gate");
   trace.push({ action: "invalid-custom-minutes", expected: "stay-on-gate", observedUrl: await currentUrl(cdp) });
 
-  await evaluate(cdp, "document.querySelector('[data-minutes=\"1\"]').click();");
+  await evaluate(cdp, "document.querySelector('[data-minutes=\"0.1666666667\"]').click();");
   await waitForUrl(cdp, (url) => url === first);
   await assertTextIncludes(cdp, "Site one");
-  trace.push({ action: "allow-one-minute", target: first, observedUrl: await currentUrl(cdp) });
+  trace.push({ action: "allow-ten-seconds", target: first, observedUrl: await currentUrl(cdp) });
 
   const sameOrigin = `${sites[0].url}/second`;
   await navigate(cdp, sameOrigin);
@@ -108,54 +114,97 @@ async function runSmoke(browserPath) {
   await assertTextIncludes(cdp, "Site one");
   trace.push({ action: "same-origin-reuse", target: sameOrigin, observedUrl: await currentUrl(cdp) });
 
-  const fiveMin = `${sites[1].url}/five`;
+  const oneMin = `${sites[1].url}/one`;
+  await navigate(cdp, oneMin);
+  await waitForUrl(cdp, (url) => url.startsWith("chrome-extension://") && url.includes("/gate.html"));
+  await waitForGateReady(cdp);
+  await evaluate(cdp, "document.querySelector('[data-minutes=\"1\"]').click();");
+  await waitForUrl(cdp, (url) => url === oneMin);
+  await assertTextIncludes(cdp, "Site two");
+  trace.push({ action: "allow-one-minute", target: oneMin, observedUrl: await currentUrl(cdp) });
+
+  const fiveMin = `${sites[2].url}/five`;
   await navigate(cdp, fiveMin);
   await waitForUrl(cdp, (url) => url.startsWith("chrome-extension://") && url.includes("/gate.html"));
   await waitForGateReady(cdp);
   await evaluate(cdp, "document.querySelector('[data-minutes=\"5\"]').click();");
   await waitForUrl(cdp, (url) => url === fiveMin);
-  await assertTextIncludes(cdp, "Site two");
+  await assertTextIncludes(cdp, "Site three");
   trace.push({ action: "allow-five-minutes", target: fiveMin, observedUrl: await currentUrl(cdp) });
 
-  const custom = `${sites[2].url}/custom`;
-  await navigate(cdp, custom);
+  const customPointOne = `${sites[3].url}/custom-point-one`;
+  await navigate(cdp, customPointOne);
   await waitForUrl(cdp, (url) => url.startsWith("chrome-extension://") && url.includes("/gate.html"));
   await waitForGateReady(cdp);
-  await evaluate(cdp, "document.querySelector('#minutes').value = '2'; document.querySelector('#custom-form').requestSubmit();");
-  await waitForUrl(cdp, (url) => url === custom);
-  await assertTextIncludes(cdp, "Site three");
-  trace.push({ action: "allow-custom-minutes", minutes: 2, target: custom, observedUrl: await currentUrl(cdp) });
+  await evaluate(cdp, "document.querySelector('#minutes').value = '0.1'; document.querySelector('#custom-form').requestSubmit();");
+  await waitForUrl(cdp, (url) => url === customPointOne);
+  await assertTextIncludes(cdp, "Site four");
+  trace.push({ action: "allow-custom-decimal-minutes", minutes: 0.1, target: customPointOne, observedUrl: await currentUrl(cdp) });
 
-  const decline = `${sites[3].url}/decline`;
-  await navigate(cdp, decline);
+  const customExpiry = `${sites[4].url}/custom-expiry`;
+  await navigate(cdp, customExpiry);
   await waitForUrl(cdp, (url) => url.startsWith("chrome-extension://") && url.includes("/gate.html"));
   await waitForGateReady(cdp);
-  await evaluate(cdp, "document.querySelector('#decline').click();");
-  const blockedUrl = await waitForUrl(cdp, (url) => url.startsWith("chrome-extension://") && url.includes("/blocked.html"));
-  assertIncludes(blockedUrl, encodeURIComponent(decline), "blocked URL should preserve declined target");
-  await assertTextIncludes(cdp, "Site not opened");
-  trace.push({ action: "decline-to-blocked", target: decline, observedUrl: blockedUrl });
+  await evaluate(cdp, "document.querySelector('#minutes').value = '0.05'; document.querySelector('#custom-form').requestSubmit();");
+  await waitForUrl(cdp, (url) => url === customExpiry);
+  await assertTextIncludes(cdp, "Site five");
+  trace.push({ action: "allow-custom-expiring-decimal-minutes", minutes: 0.05, target: customExpiry, observedUrl: await currentUrl(cdp) });
 
-  const screenshotPath = join(artifactsDir, "blocked-page.png");
+  await waitForTargetClosed(port, target.id);
+  trace.push({ action: "expiry-closes-open-tab", target: customExpiry });
+  state.cdp = null;
+
+  const declineTarget = await openNewPageTarget(port);
+  const declineCdp = await CdpClient.connect(declineTarget.webSocketDebuggerUrl);
+  state.cdp = declineCdp;
+  await declineCdp.send("Page.enable");
+  await declineCdp.send("Runtime.enable");
+
+  const decline = `${sites[5].url}/decline`;
+  await navigate(declineCdp, decline);
+  await waitForUrl(declineCdp, (url) => url.startsWith("chrome-extension://") && url.includes("/gate.html"));
+  await waitForGateReady(declineCdp);
+  const screenshotPath = join(artifactsDir, "decline-gate.png");
+  const screenshot = await declineCdp.send("Page.captureScreenshot", { format: "png" });
+  writeFileSync(screenshotPath, Buffer.from(screenshot.data, "base64"));
+  await evaluate(declineCdp, "document.querySelector('#decline').click();");
+  await waitForTargetClosed(port, declineTarget.id);
+  trace.push({ action: "decline-button-closes-tab", target: decline });
+  state.cdp = null;
+
+  const escapeTarget = await openNewPageTarget(port);
+  const escapeCdp = await CdpClient.connect(escapeTarget.webSocketDebuggerUrl);
+  state.cdp = escapeCdp;
+  await escapeCdp.send("Page.enable");
+  await escapeCdp.send("Runtime.enable");
+
+  const escapeDecline = `${sites[6].url}/escape-decline`;
+  await navigate(escapeCdp, escapeDecline);
+  await waitForUrl(escapeCdp, (url) => url.startsWith("chrome-extension://") && url.includes("/gate.html"));
+  await waitForGateReady(escapeCdp);
+  await evaluate(escapeCdp, "setTimeout(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })), 0); true;");
+  await waitForTargetClosed(port, escapeTarget.id);
+  trace.push({ action: "escape-closes-tab", target: escapeDecline });
+  state.cdp = null;
+
   const tracePath = join(artifactsDir, "trace.json");
   const consoleLogPath = join(artifactsDir, "console.log");
-  const screenshot = await cdp.send("Page.captureScreenshot", { format: "png" });
-  writeFileSync(screenshotPath, Buffer.from(screenshot.data, "base64"));
   writeFileSync(tracePath, `${JSON.stringify({ browserPath, extensionRoot, steps: trace }, null, 2)}\n`);
   writeFileSync(consoleLogPath, [
     `browser=${browserPath}`,
     `extensionRoot=${extensionRoot}`,
     `firstGate=${gateUrl}`,
     `invalidCustomUrl=${trace.find((item) => item.action === "invalid-custom-minutes")?.observedUrl}`,
-    `oneMinuteUrl=${first}`,
+    `tenSecondUrl=${first}`,
     `sameOriginUrl=${sameOrigin}`,
+    `oneMinuteUrl=${oneMin}`,
     `fiveMinuteUrl=${fiveMin}`,
-    `customMinuteUrl=${custom}`,
-    `blockedUrl=${blockedUrl}`
+    `customPointOneUrl=${customPointOne}`,
+    `customExpiryUrl=${customExpiry}`,
+    `expiryClosedTarget=${customExpiry}`,
+    `declineClosedTarget=${decline}`,
+    `escapeClosedTarget=${escapeDecline}`
   ].join("\n") + "\n");
-
-  await cdp.close();
-  state.cdp = null;
 
   return {
     schemaVersion: 1,
@@ -163,22 +212,28 @@ async function runSmoke(browserPath) {
     surface: "chrome-extension",
     status: "passed",
     url: first,
-    page: blockedUrl,
+    page: customExpiry,
     browserPath,
     extensionRoot,
     extensionLoaded: true,
     extensionContext: true,
     manifestPath: "manifest.json",
-    screenshotPath: "blocked-page.png",
+    screenshotPath: "decline-gate.png",
     tracePath: "trace.json",
     consoleLogPath: "console.log",
     assertions: [
       "first navigation was redirected to extension gate page before site content was shown",
+      "gate card rendered inside the viewport at a randomized non-centered position",
+      "gate action buttons rendered in a randomized order",
       "invalid custom minutes stayed on gate and displayed validation error",
-      "1 min opened the target and allowed the same origin immediately after",
+      "10 sec opened the target",
+      "same-origin navigation reused the active allowance",
+      "1 min opened a separate target",
       "5 min opened a separate target",
-      "custom 2 min opened a separate target",
-      "Actually no navigated to extension blocked page instead of target"
+      "custom 0.1 min opened a separate target",
+      "custom 0.05 min opened a separate target and closed the open tab after expiry",
+      "Actually no closed the tab instead of opening the target",
+      "Escape closed the tab through the decline path"
     ]
   };
 }
@@ -260,6 +315,29 @@ async function getExistingPageTarget(port) {
   throw new Error("Timed out waiting for a browser page target.");
 }
 
+async function openNewPageTarget(port) {
+  const response = await fetch(`http://127.0.0.1:${port}/json/new?about:blank`, { method: "PUT" });
+  if (!response.ok) {
+    throw new Error(`Failed to open new page target: ${response.status} ${await response.text()}`);
+  }
+  const target = await response.json();
+  if (!target.webSocketDebuggerUrl) {
+    throw new Error("New page target did not expose a CDP websocket URL.");
+  }
+  return target;
+}
+
+async function waitForTargetClosed(port, targetId) {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const targets = await listTargets(port).catch(() => []);
+    if (!targets.some((target) => target.id === targetId)) {
+      return;
+    }
+    await delay(100);
+  }
+  throw new Error(`Timed out waiting for target to close: ${targetId}`);
+}
+
 async function listTargets(port) {
   const response = await fetch(`http://127.0.0.1:${port}/json/list`);
   if (!response.ok) {
@@ -310,6 +388,60 @@ async function assertTextIncludes(cdp, expected) {
     await delay(100);
   }
   throw new Error(`Timed out waiting for page text: ${expected}`);
+}
+
+async function readGateLayout(cdp) {
+  const result = await evaluate(cdp, `(() => {
+    const shell = document.querySelector(".shell");
+    const rect = shell.getBoundingClientRect();
+    return {
+      positioned: shell.dataset.positioned === "true",
+      shuffled: document.querySelector(".actions")?.dataset.shuffled === "true",
+      left: rect.left,
+      top: rect.top,
+      right: rect.right,
+      bottom: rect.bottom,
+      width: rect.width,
+      height: rect.height,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      actionOrder: Array.from(document.querySelectorAll(".actions button")).map((button) => button.textContent.trim())
+    };
+  })()`);
+  return result.value;
+}
+
+function assertGateRandomized(layout) {
+  if (!layout.positioned) {
+    throw new Error("Gate shell did not mark itself as randomly positioned.");
+  }
+  if (!layout.shuffled) {
+    throw new Error("Gate action buttons did not mark themselves as shuffled.");
+  }
+
+  const slop = 1;
+  if (layout.left < -slop || layout.top < -slop || layout.right > layout.viewportWidth + slop || layout.bottom > layout.viewportHeight + slop) {
+    throw new Error(`Gate shell escaped viewport bounds: ${JSON.stringify(layout)}`);
+  }
+
+  const expectedButtons = ["10 sec", "1 min", "5 min", "Actually no"].sort().join("|");
+  const actualButtons = [...layout.actionOrder].sort().join("|");
+  if (actualButtons !== expectedButtons) {
+    throw new Error(`Gate action buttons changed unexpectedly: ${layout.actionOrder.join(" | ")}`);
+  }
+
+  const staticOrder = ["Actually no", "10 sec", "1 min", "5 min"].join("|");
+  if (layout.actionOrder.join("|") === staticOrder) {
+    throw new Error("Gate action buttons stayed in static HTML order.");
+  }
+
+  const hasHorizontalRoom = layout.viewportWidth - layout.width > 96;
+  const hasVerticalRoom = layout.viewportHeight - layout.height > 96;
+  const centerLeft = Math.max(0, (layout.viewportWidth - layout.width) / 2);
+  const centerTop = Math.max(0, (layout.viewportHeight - layout.height) / 2);
+  if (hasHorizontalRoom && hasVerticalRoom && Math.abs(layout.left - centerLeft) < 40 && Math.abs(layout.top - centerTop) < 40) {
+    throw new Error(`Gate shell stayed near the old centered position: ${JSON.stringify(layout)}`);
+  }
 }
 
 async function evaluate(cdp, expression) {

@@ -266,7 +266,7 @@ npm run browser-extension:replay
 npm run browser-extension:test-replay
 ```
 
-The replay copies the public Site Gate extension into an isolated repo, validates the manifest/source, runs unpacked-extension CDP smoke, verifies invalid custom minutes, one-minute allow, five-minute allow, custom allow, same-origin reuse, and decline-to-blocked behavior, then proves a syntax-only false pass is rejected.
+The replay copies the public Site Gate extension into an isolated repo, validates the manifest/source, runs unpacked-extension CDP smoke, verifies invalid custom minutes, ten-second and minute allow choices, decimal custom allows, same-origin reuse, close-on-expiry, and close-on-decline behavior, then proves a syntax-only false pass is rejected.
 
 To replay the non-web data-pipeline task class:
 

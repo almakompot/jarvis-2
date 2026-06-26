@@ -3,7 +3,7 @@
   "name": "Site Gate",
   "version": "0.1.0",
   "description": "Ask before opening sites, with temporary allow choices.",
-  "permissions": ["storage", "tabs", "webNavigation"],
+  "permissions": ["alarms", "storage", "tabs", "webNavigation"],
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js"
@@ -12,4 +12,3 @@
     "default_title": "Site Gate"
   }
 }
-

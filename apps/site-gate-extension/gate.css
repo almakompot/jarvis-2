@@ -8,18 +8,33 @@
 body {
   min-height: 100vh;
   margin: 0;
-  display: grid;
-  place-items: center;
+  overflow: hidden;
 }
 
 .shell {
+  position: fixed;
+  left: var(--gate-left, 50%);
+  top: var(--gate-top, 50%);
+  transform: var(--gate-transform, translate(-50%, -50%));
   width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
   box-sizing: border-box;
+  overflow: auto;
   padding: 32px;
   border: 1px solid #d5dde8;
   border-radius: 8px;
   background: #ffffff;
   box-shadow: 0 24px 60px rgb(0 0 0 / 12%);
+}
+
+@supports (height: 100dvh) {
+  body {
+    min-height: 100dvh;
+  }
+
+  .shell {
+    max-height: calc(100dvh - 32px);
+  }
 }
 
 .eyebrow {
