@@ -115,7 +115,7 @@ export function buildDashboardSummary({ runDir, now = new Date(), activeActions 
     actions,
     status,
     currentActivity: {
-      phase: status.phase,
+      phase: status.execution.phase,
       latestEvent: compactEvent(latestEvent),
       latestCommand: compactCommand(latestCommand),
       latestTranscript: compactTranscript(latestTranscript),
@@ -407,7 +407,7 @@ export function renderDashboardHtml({ apiBase = "/api", homeHref = null } = {}) 
           <div id="run-dir" class="meta"></div>
         </div>
         <div>
-          <span id="overall-status" class="status pending">loading</span>
+          <span id="execution-status" class="status pending">loading</span>
           <div id="elapsed" class="meta"></div>
           <div id="timeout" class="meta"></div>
         </div>
@@ -467,7 +467,7 @@ export function renderDashboardHtml({ apiBase = "/api", homeHref = null } = {}) 
   <script>
     const refreshMs = 1500;
     const apiBase = ${JSON.stringify(safeApiBase)};
-    const statusEl = document.getElementById("overall-status");
+    const statusEl = document.getElementById("execution-status");
     const text = (value) => value == null || value === "" ? "none" : String(value);
     const cls = (status) => ["accepted", "passed", "implemented", "finished"].includes(status) ? "pass"
       : ["failed"].includes(status) ? "fail"
@@ -555,18 +555,21 @@ export function renderDashboardHtml({ apiBase = "/api", homeHref = null } = {}) 
       const summary = await summaryRes.json();
       const output = await outputRes.json();
       const s = summary.status || {};
-      const displayStatus = s.displayStatus || s.executionStatus || s.overall || "pending";
-      statusEl.textContent = displayStatus;
-      statusEl.className = "status " + displayStatus;
-      setText("elapsed", s.activityText || (s.isTerminal ? "stopped " + text(s.stoppedAgoText) + " ago; runtime " + text(s.runtimeText) : "running " + text(s.elapsedText)));
-      setText("timeout", "wall-clock limit " + (s.wallClockLimitMs == null ? "none" : s.wallClockLimitMs + "ms"));
+      const execution = s.execution || {};
+      const operator = s.operator || {};
+      const internals = s.internals || {};
+      const executionState = execution.state || "pending";
+      statusEl.textContent = executionState;
+      statusEl.className = "status " + executionState;
+      setText("elapsed", execution.activityText || "not started");
+      setText("timeout", "wall-clock limit " + (execution.wallClockLimitMs == null ? "none" : execution.wallClockLimitMs + "ms"));
       setText("task", "Task: " + text(summary.task && summary.task.title));
       setText("repo", "Repo: " + text(summary.repo && summary.repo.name) + "  Branch: " + text(summary.repo && summary.repo.branch) + "  Run: " + text(summary.runId));
       setText("run-dir", "Run dir: " + text(summary.runDir));
       rows("actions", summary.actions, actionRow);
       rows("timeline", (summary.timeline.events || []).slice(-12), (event) => tr([event.timestamp || "", event.phase || "", event.status || "", event.message || event.type || ""]));
       kv("activity", [
-        ["Phase", s.phase],
+        ["Phase", execution.phase],
         ["Latest event", summary.currentActivity.latestEvent && summary.currentActivity.latestEvent.message],
         ["Latest command", summary.currentActivity.latestCommand && summary.currentActivity.latestCommand.command],
         ["Latest transcript", summary.currentActivity.latestTranscript && summary.currentActivity.latestTranscript.content],
@@ -581,15 +584,16 @@ export function renderDashboardHtml({ apiBase = "/api", homeHref = null } = {}) 
       rows("command-log", summary.commandLog.commands, (cmd) => tr([cmd.id, cmd.command, cmd.status, cmd.exitCode == null ? cmd.signal : cmd.exitCode]));
       rows("evidence", summary.evidence.items, (item) => tr([item.id, item.type, item.status, artifactLink(item.artifactPath)]));
       kv("decision", [
-        ["Runner status", s.runner],
-        ["Verification status", s.verification],
-        ["Verifier status", s.verifier],
-        ["Operator status", s.operatorStatus],
-        ["Internal policy decision", s.policy],
-        ["Blocking reason", s.blockingReason],
-        ["Repair reason", s.repairReason],
-        ["Current risk", s.currentRisk],
-        ["Next expected transition", s.nextTransition]
+        ["Runner status", internals.runner],
+        ["Verification status", internals.verification],
+        ["Verifier status", internals.verifier],
+        ["Operator status", operator.state],
+        ["Internal policy decision", internals.policy],
+        ["Blocking reason", operator.blockingReason],
+        ["Reject reason", operator.rejectReason],
+        ["Repair reason", operator.repairReason],
+        ["Current risk", operator.currentRisk],
+        ["Next expected transition", operator.nextTransition]
       ]);
     }
     refresh().catch((error) => { document.body.textContent = error.message || String(error); });
@@ -885,13 +889,6 @@ function summarizeStatus({ now, runnerConfig, runnerState, verification, verifie
   const verificationStatus = active?.id === "verify" ? "running" : verification?.status || "pending";
   const verifier = verifierReport?.recommendation || verifierReport?.status || "pending";
   const policy = active ? "pending" : policyDecision?.decision || "not-run";
-  const internalOverall = active
-    ? activeInternalOverall(active)
-    : policy !== "not-run" && policy !== "pending"
-    ? policy
-    : runner === "implemented" && verificationStatus === "pending"
-      ? "implemented"
-      : runner;
   const operatorStatus = active ? "working" : operatorStatusFor({ runner, verificationStatus, verifier, policy });
   const startedAt = active?.startedAt || runnerState?.createdAt || spec?.createdAt || finalReport?.createdAt || latestEvent?.timestamp || now.toISOString();
   const stoppedAt = active ? null : terminalRunnerStatus(runner) ? runnerState?.updatedAt || latestEvent?.timestamp || null : null;
@@ -899,62 +896,57 @@ function summarizeStatus({ now, runnerConfig, runnerState, verification, verifie
   const stoppedAgoMs = stoppedAt ? Math.max(0, now.getTime() - Date.parse(stoppedAt)) : null;
   const latestCommandStatus = latestCommand ? commandStatus(latestCommand) : null;
   const isTerminal = active ? false : terminalRunnerStatus(runner) || terminalPolicyStatus(policy);
-  const executionStatus = executionStatusFor({ active, runner, isTerminal });
-  const elapsedText = formatDuration(elapsedMs);
+  const executionState = executionStateFor({ active, runner, isTerminal });
   const runtimeText = formatDuration(elapsedMs);
   const stoppedAgoText = stoppedAgoMs == null ? null : formatDuration(stoppedAgoMs);
-  return {
-    overall: operatorStatus,
-    operatorStatus,
-    executionStatus,
-    displayStatus: executionStatus,
-    internalOverall,
-    runner,
-    verification: verificationStatus,
-    verifier,
-    policy,
-    phase: active
-      ? activeActionPhase(active)
-      : terminalRunnerStatus(runner)
+  const phase = active
+    ? activeActionPhase(active)
+    : terminalRunnerStatus(runner)
       ? `stopped: ${runnerState?.terminalState?.reason || runner}`
-      : latestEvent?.phase || latestCommand?.phase || runnerState?.terminalState?.reason || "pending",
-    isTerminal,
-    startedAt,
-    stoppedAt,
-    elapsedMs,
-    elapsedText,
-    runtimeText,
-    stoppedAgoText,
-    activityText: activityTextFor({ executionStatus, elapsedText, runtimeText, stoppedAgoText }),
-    wallClockLimitMs: runnerConfig?.timeouts?.totalMs ?? null,
-    blockingReason: active ? null : policyDecision?.decision === "blocked"
-      ? policyDecision.decisionReason
-      : runner === "blocked"
-        ? runnerState?.terminalState?.reason || "runner blocked"
-        : null,
-    rejectReason: active ? null : policyDecision?.decision === "rejected"
-      ? policyDecision.decisionReason
-      : runner === "rejected"
-        ? runnerState?.terminalState?.reason || "runner rejected"
-        : null,
-    repairReason: active ? null : repairReasonFor({ runner, policyDecision, runnerState, verifierReport }),
-    currentRisk: active
-      ? `${active.label} in progress; previous terminal decision is stale until it finishes`
-      : finalReport?.residualRisk?.[0] || policyDecision?.residualRisk?.[0] || missingRisk({ verificationStatus, policy, latestCommandStatus }),
-    nextTransition: active
-      ? `wait for ${active.label} to finish`
-      : nextTransition({ runner, verificationStatus, policy, operatorStatus })
+      : latestEvent?.phase || latestCommand?.phase || runnerState?.terminalState?.reason || "pending";
+  const blockingReason = active ? null : policyDecision?.decision === "blocked"
+    ? policyDecision.decisionReason
+    : runner === "blocked"
+      ? runnerState?.terminalState?.reason || "runner blocked"
+      : null;
+  const rejectReason = active ? null : policyDecision?.decision === "rejected"
+    ? policyDecision.decisionReason
+    : runner === "rejected"
+      ? runnerState?.terminalState?.reason || "runner rejected"
+      : null;
+  const repairReason = active ? null : repairReasonFor({ runner, policyDecision, runnerState, verifierReport });
+  const currentRisk = active
+    ? `${active.label} in progress; previous terminal decision is stale until it finishes`
+    : finalReport?.residualRisk?.[0] || policyDecision?.residualRisk?.[0] || missingRisk({ verificationStatus, policy, latestCommandStatus });
+  const next = active
+    ? `wait for ${active.label} to finish`
+    : nextTransition({ runner, verificationStatus, policy, operatorStatus });
+  return {
+    execution: {
+      state: executionState,
+      phase,
+      startedAt,
+      stoppedAt,
+      runtimeText,
+      stoppedAgoText,
+      activityText: activityTextFor({ state: executionState, runtimeText, stoppedAgoText }),
+      wallClockLimitMs: runnerConfig?.timeouts?.totalMs ?? null
+    },
+    operator: {
+      state: operatorStatus,
+      nextTransition: next,
+      currentRisk,
+      blockingReason,
+      rejectReason,
+      repairReason
+    },
+    internals: {
+      runner,
+      verification: verificationStatus,
+      verifier,
+      policy
+    }
   };
-}
-
-function activeInternalOverall(action) {
-  if (action.id === "resume") {
-    return "running";
-  }
-  if (action.id === "verify") {
-    return "verifying";
-  }
-  return "working";
 }
 
 function activeActionPhase(action) {
@@ -967,7 +959,7 @@ function activeActionPhase(action) {
   return `action: ${action.label}`;
 }
 
-function executionStatusFor({ active, runner, isTerminal }) {
+function executionStateFor({ active, runner, isTerminal }) {
   if (active || runner === "running") {
     return "running";
   }
@@ -980,17 +972,17 @@ function executionStatusFor({ active, runner, isTerminal }) {
   return runner || "pending";
 }
 
-function activityTextFor({ executionStatus, elapsedText, runtimeText, stoppedAgoText }) {
-  if (executionStatus === "running") {
-    return `running ${elapsedText || "0s"}`;
+function activityTextFor({ state, runtimeText, stoppedAgoText }) {
+  if (state === "running") {
+    return `running ${runtimeText || "0s"}`;
   }
-  if (executionStatus === "stopped") {
+  if (state === "stopped") {
     return `stopped ${stoppedAgoText || "0s"} ago; runtime ${runtimeText || "0s"}`;
   }
-  if (executionStatus === "pending") {
+  if (state === "pending") {
     return "not started";
   }
-  return `${executionStatus} ${elapsedText || "0s"}`;
+  return `${state} ${runtimeText || "0s"}`;
 }
 
 function summarizeRequirements({ spec, verification }) {

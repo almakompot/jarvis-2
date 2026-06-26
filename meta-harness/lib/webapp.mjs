@@ -290,7 +290,7 @@ export function renderWebAppHtml() {
       }
       for (const run of data.runs) {
         const row = document.createElement("tr");
-        row.append(cell(run.status.operatorStatus || run.status.overall || "pending"));
+        row.append(cell(run.status.execution && run.status.execution.state));
         const linkCell = document.createElement("td");
         const link = document.createElement("a");
         link.href = run.detailUrl;

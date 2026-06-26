@@ -47,7 +47,8 @@ test("web app lists discovered runs and serves dashboard detail routes", async (
   assert.equal(runs.runs.length, 1);
   const run = runs.runs[0];
   assert.equal(run.runId, "webapp-listed-run");
-  assert.equal(run.status.operatorStatus, "working");
+  assert.equal(run.status.execution.state, "pending");
+  assert.equal(run.status.operator.state, "working");
 
   const detail = await (await fetch(new URL(run.detailUrl, server.url))).text();
   assert.match(detail, /JARVIS HARNESS RUN/);
@@ -144,8 +145,9 @@ test("web app starts a run through the normal run folder and redirects to detail
 
   const summary = await pollSummary(server.url, payload.token);
   assert.equal(summary.runId, "webapp-started-run");
-  assert.equal(summary.status.runner, "implemented");
-  assert.equal(summary.status.operatorStatus, "working");
+  assert.equal(summary.status.internals.runner, "implemented");
+  assert.equal(summary.status.operator.state, "working");
+  assert.equal(summary.status.execution.state, "stopped");
 });
 
 test("web app can initialize without starting the runner", async (t) => {
@@ -171,7 +173,8 @@ test("web app can initialize without starting the runner", async (t) => {
   assert.equal(initialized.status, 202);
   const payload = await initialized.json();
   const summary = await (await fetch(new URL(`/api/run/${payload.token}/summary`, server.url))).json();
-  assert.equal(summary.status.runner, "pending");
+  assert.equal(summary.status.internals.runner, "pending");
+  assert.equal(summary.status.execution.state, "pending");
   assert.equal(summary.commands.resume, `jarvis-harness run --run ${payload.runDir}`);
 
   const report = await fetch(new URL(`/api/run/${payload.token}/action`, server.url), {
@@ -192,6 +195,7 @@ test("web app HTML is minimal desktop-only local harness UI", () => {
   assert.match(html, /\/api\/runs/);
   assert.match(html, /\/api\/doctor/);
   assert.match(html, /\/api\/folder-picker/);
+  assert.match(html, /run\.status\.execution && run\.status\.execution\.state/);
   assert.doesNotMatch(html, /@media/);
 });
 
@@ -215,7 +219,7 @@ async function pollSummary(baseUrl, token) {
   let last = null;
   for (let index = 0; index < 30; index += 1) {
     last = await (await fetch(new URL(`/api/run/${token}/summary`, baseUrl))).json();
-    if (last.status?.runner === "implemented") {
+    if (last.status?.internals?.runner === "implemented") {
       return last;
     }
     await new Promise((resolve) => setTimeout(resolve, 50));
