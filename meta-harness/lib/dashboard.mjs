@@ -266,11 +266,27 @@ export function renderDashboardHtml({ apiBase = "/api", homeHref = null } = {}) 
     .status.blocked, .warn { color: var(--warn); }
     .fail { color: var(--fail); }
     .command-strip {
-      padding: var(--space-1) var(--space-3);
+      padding: 0 var(--space-3);
       border-bottom: 1px solid var(--line);
       white-space: normal;
       overflow: visible;
       word-break: break-word;
+    }
+    .command-strip table { table-layout: fixed; }
+    .command-copy {
+      width: 58px;
+      margin: 0;
+      padding: 2px 6px;
+      border: 1px solid var(--line);
+      background: var(--soft);
+      color: var(--muted);
+      font: inherit;
+      cursor: pointer;
+      text-transform: lowercase;
+    }
+    .command-copy.copied {
+      color: var(--pass);
+      border-color: var(--pass);
     }
     .grid-top {
       display: grid;
@@ -362,7 +378,12 @@ export function renderDashboardHtml({ apiBase = "/api", homeHref = null } = {}) 
           <div id="timeout" class="meta"></div>
         </div>
       </div>
-      <div id="commands" class="command-strip">Loading commands...</div>
+      <div class="command-strip">
+        <table>
+          <thead><tr><th style="width:110px">Command</th><th>Text</th><th style="width:70px">Copy</th></tr></thead>
+          <tbody id="commands"></tbody>
+        </table>
+      </div>
       <div class="grid-top">
         <section>
           <h2>Run Timeline</h2>
@@ -451,6 +472,57 @@ export function renderDashboardHtml({ apiBase = "/api", homeHref = null } = {}) 
       a.target = "_blank";
       return a;
     }
+    function commandRows(commands) {
+      return [
+        ["resume", commands && commands.resume],
+        ["verify", commands && commands.verify],
+        ["report text", commands && commands.reportText],
+        ["report html", commands && commands.reportHtml]
+      ].filter(([, command]) => command);
+    }
+    async function copyCommand(button, command) {
+      try {
+        await copyText(command);
+        button.textContent = "copied";
+        button.classList.add("copied");
+        setTimeout(() => {
+          button.textContent = "copy";
+          button.classList.remove("copied");
+        }, 1200);
+      } catch (error) {
+        button.textContent = "error";
+        button.classList.add("copied");
+        setTimeout(() => {
+          button.textContent = "copy";
+          button.classList.remove("copied");
+        }, 1200);
+      }
+    }
+    async function copyText(value) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(value);
+        return;
+      }
+      const textarea = document.createElement("textarea");
+      textarea.value = value;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      document.body.append(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      textarea.remove();
+    }
+    function commandRow([label, command]) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "command-copy";
+      button.textContent = "copy";
+      button.title = "Copy " + label + " command";
+      button.setAttribute("aria-label", "Copy " + label + " command");
+      button.addEventListener("click", () => copyCommand(button, command));
+      return tr([label, command, button]);
+    }
     function kv(id, values) {
       const box = document.getElementById(id);
       box.replaceChildren();
@@ -476,7 +548,7 @@ export function renderDashboardHtml({ apiBase = "/api", homeHref = null } = {}) 
       setText("task", "Task: " + text(summary.task && summary.task.title));
       setText("repo", "Repo: " + text(summary.repo && summary.repo.name) + "  Branch: " + text(summary.repo && summary.repo.branch) + "  Run: " + text(summary.runId));
       setText("run-dir", "Run dir: " + text(summary.runDir));
-      setText("commands", "Resume: " + summary.commands.resume + "    Verify: " + summary.commands.verify + "    Report: " + summary.commands.reportText);
+      rows("commands", commandRows(summary.commands), commandRow);
       rows("timeline", (summary.timeline.events || []).slice(-12), (event) => tr([event.timestamp || "", event.phase || "", event.status || "", event.message || event.type || ""]));
       kv("activity", [
         ["Phase", s.phase],

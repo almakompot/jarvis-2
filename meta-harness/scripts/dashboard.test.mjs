@@ -29,7 +29,10 @@ test("dashboard summary renders an initialized pending run with missing-file tol
   assert.ok(summary.requirements.length > 0);
   assert.ok(summary.proofObligations.length > 0);
   assert.equal(summary.missingArtifacts.length, 0);
+  assert.match(summary.commands.resume, /jarvis-harness run --run/);
   assert.match(summary.commands.verify, /jarvis-harness verify --run/);
+  assert.match(summary.commands.reportText, /jarvis-harness report --run .* --format text/);
+  assert.match(summary.commands.reportHtml, /jarvis-harness report --run .* --format html/);
 });
 
 test("dashboard summary maps internal policy decisions to operator lifecycle states", (t) => {
@@ -133,6 +136,10 @@ test("dashboard server serves HTML, JSON endpoints, artifact files, and traversa
   assert.match(html, /width: 100%/);
   assert.match(html, /white-space: pre;/);
   assert.match(html, /overflow: auto;/);
+  assert.match(html, /command-copy/);
+  assert.match(html, /commandRows/);
+  assert.match(html, /copyText/);
+  assert.match(html, /report html/);
   assert.doesNotMatch(html, /2400px/);
   assert.doesNotMatch(html, /@media/);
 
@@ -217,6 +224,12 @@ test("dashboard HTML is desktop-only and file-backed", () => {
   assert.match(html, /white-space: pre;/);
   assert.match(html, /overflow: auto;/);
   assert.match(html, /displayText/);
+  assert.match(html, /command-copy/);
+  assert.match(html, /Copy " \+ label \+ " command/);
+  assert.match(html, /\["resume", commands && commands\.resume\]/);
+  assert.match(html, /\["verify", commands && commands\.verify\]/);
+  assert.match(html, /\["report text", commands && commands\.reportText\]/);
+  assert.match(html, /\["report html", commands && commands\.reportHtml\]/);
   assert.doesNotMatch(html, /text-overflow: ellipsis/);
   assert.doesNotMatch(html, /grid-template-columns: calc\(var\(--dashboard-width\)/);
   assert.doesNotMatch(html, /2400px/);

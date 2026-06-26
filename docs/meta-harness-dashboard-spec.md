@@ -166,7 +166,11 @@ The runner must also distinguish overclaim from explicit non-completion. The pro
 | Task: Build the one-week Statement Tracker app MVP                                                                                                             |
 | Run dir: /Users/levente/Documents/Jarvis/Projects/statement-tracker/.task-runs/20260625T095410Z-build-the-one-week-statement-tracker-app-mvp-the              |
 +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| Resume: jarvis-harness run --run <run-dir>       Verify: jarvis-harness verify --run <run-dir>       Report: jarvis-harness report --run <run-dir> --format text |
+| COMMAND      TEXT                                                                                                                     COPY      |
+| resume       jarvis-harness run --run <run-dir>                                                                                       copy      |
+| verify       jarvis-harness verify --run <run-dir>                                                                                    copy      |
+| report text  jarvis-harness report --run <run-dir> --format text                                                                      copy      |
+| report html  jarvis-harness report --run <run-dir> --format html                                                                      copy      |
 +----------------------------------------------+--------------------------------------------------------------+------------------------------------------------------------+
 | RUN TIMELINE                                  | CURRENT ACTIVITY                                             | LIVE OUTPUT                                                |
 |                                              |                                                              |                                                            |
@@ -218,10 +222,9 @@ Header:
 
 Command strip:
 
-- resume command
-- verify command
-- text report command
-- HTML report command after it exists
+- render resume, verify, text report, and HTML report as their own rows
+- each row has a minimalist copy button for the exact command text
+- copy buttons only write to the clipboard; they must not start runs, verify, report, write artifacts, or mutate the run folder
 
 Run timeline:
 
