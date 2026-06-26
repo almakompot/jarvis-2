@@ -8,11 +8,41 @@ import {
 } from "node:fs";
 import { basename, extname, isAbsolute, join, relative, resolve } from "node:path";
 
+import {
+  runMetaCommand,
+  runVerifyPipeline,
+  writeRunReport
+} from "./report-ux.mjs";
+
 const defaultHost = "127.0.0.1";
 const defaultOutputBytes = 48 * 1024;
 const defaultJsonlLimit = 80;
+const dashboardActionSpecs = {
+  resume: {
+    id: "resume",
+    label: "Resume run",
+    background: true
+  },
+  verify: {
+    id: "verify",
+    label: "Run verification",
+    background: true
+  },
+  reportText: {
+    id: "reportText",
+    label: "Text report",
+    background: false,
+    format: "text"
+  },
+  reportHtml: {
+    id: "reportHtml",
+    label: "HTML report",
+    background: false,
+    format: "html"
+  }
+};
 
-export function buildDashboardSummary({ runDir, now = new Date() } = {}) {
+export function buildDashboardSummary({ runDir, now = new Date(), activeActions = null } = {}) {
   const absoluteRunDir = resolveRunDir(runDir);
   const spec = readJsonOptional(absoluteRunDir, "spec.json");
   const repoProfile = readJsonOptional(absoluteRunDir, "repo-profile.json");
@@ -79,6 +109,7 @@ export function buildDashboardSummary({ runDir, now = new Date() } = {}) {
       reportText: `jarvis-harness report --run ${shellToken(absoluteRunDir)} --format text`,
       reportHtml: `jarvis-harness report --run ${shellToken(absoluteRunDir)} --format html`
     },
+    actions: summarizeDashboardActions({ runDir: absoluteRunDir, activeActions }),
     status,
     currentActivity: {
       phase: status.phase,
@@ -265,28 +296,28 @@ export function renderDashboardHtml({ apiBase = "/api", homeHref = null } = {}) 
     .status.repairing, .status.working, .status.pending, .pending { color: var(--pending); }
     .status.blocked, .warn { color: var(--warn); }
     .fail { color: var(--fail); }
-    .command-strip {
+    .action-strip {
       padding: 0 var(--space-3);
       border-bottom: 1px solid var(--line);
       white-space: normal;
       overflow: visible;
       word-break: break-word;
     }
-    .command-strip table { table-layout: fixed; }
-    .command-copy {
-      width: 58px;
+    .action-strip table { table-layout: fixed; }
+    .action-button {
+      width: 150px;
       margin: 0;
       padding: 2px 6px;
       border: 1px solid var(--line);
       background: var(--soft);
-      color: var(--muted);
+      color: var(--ink);
       font: inherit;
       cursor: pointer;
-      text-transform: lowercase;
+      text-align: left;
     }
-    .command-copy.copied {
-      color: var(--pass);
-      border-color: var(--pass);
+    .action-button:disabled {
+      color: var(--muted);
+      cursor: wait;
     }
     .grid-top {
       display: grid;
@@ -378,10 +409,10 @@ export function renderDashboardHtml({ apiBase = "/api", homeHref = null } = {}) 
           <div id="timeout" class="meta"></div>
         </div>
       </div>
-      <div class="command-strip">
+      <div class="action-strip">
         <table>
-          <thead><tr><th style="width:110px">Command</th><th>Text</th><th style="width:70px">Copy</th></tr></thead>
-          <tbody id="commands"></tbody>
+          <thead><tr><th style="width:125px">Action</th><th style="width:170px">Button</th><th>Status</th><th style="width:230px">Artifact</th></tr></thead>
+          <tbody id="actions"></tbody>
         </table>
       </div>
       <div class="grid-top">
@@ -472,56 +503,36 @@ export function renderDashboardHtml({ apiBase = "/api", homeHref = null } = {}) 
       a.target = "_blank";
       return a;
     }
-    function commandRows(commands) {
-      return [
-        ["resume", commands && commands.resume],
-        ["verify", commands && commands.verify],
-        ["report text", commands && commands.reportText],
-        ["report html", commands && commands.reportHtml]
-      ].filter(([, command]) => command);
-    }
-    async function copyCommand(button, command) {
+    async function postAction(actionId, button) {
+      button.disabled = true;
+      button.textContent = "Starting...";
       try {
-        await copyText(command);
-        button.textContent = "copied";
-        button.classList.add("copied");
-        setTimeout(() => {
-          button.textContent = "copy";
-          button.classList.remove("copied");
-        }, 1200);
+        const res = await fetch(apiBase + "/action", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ action: actionId })
+        });
+        const data = await res.json();
+        if (!res.ok || data.status === "failed") {
+          throw new Error(data.error || data.message || "action failed");
+        }
+        await refresh();
       } catch (error) {
-        button.textContent = "error";
-        button.classList.add("copied");
-        setTimeout(() => {
-          button.textContent = "copy";
-          button.classList.remove("copied");
-        }, 1200);
+        button.textContent = error.message || "failed";
+        setTimeout(() => refresh().catch(() => {}), 1200);
       }
     }
-    async function copyText(value) {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(value);
-        return;
-      }
-      const textarea = document.createElement("textarea");
-      textarea.value = value;
-      textarea.setAttribute("readonly", "");
-      textarea.style.position = "fixed";
-      textarea.style.left = "-9999px";
-      document.body.append(textarea);
-      textarea.select();
-      document.execCommand("copy");
-      textarea.remove();
-    }
-    function commandRow([label, command]) {
+    function actionRow(action) {
       const button = document.createElement("button");
       button.type = "button";
-      button.className = "command-copy";
-      button.textContent = "copy";
-      button.title = "Copy " + label + " command";
-      button.setAttribute("aria-label", "Copy " + label + " command");
-      button.addEventListener("click", () => copyCommand(button, command));
-      return tr([label, command, button]);
+      button.className = "action-button";
+      button.textContent = action.label;
+      button.disabled = action.status === "running";
+      button.addEventListener("click", () => postAction(action.id, button));
+      const status = document.createElement("span");
+      status.textContent = [action.status, action.message].filter(Boolean).join(": ");
+      status.className = cls(action.status);
+      return tr([action.id, button, status, artifactLink(action.artifactPath)]);
     }
     function kv(id, values) {
       const box = document.getElementById(id);
@@ -548,7 +559,7 @@ export function renderDashboardHtml({ apiBase = "/api", homeHref = null } = {}) 
       setText("task", "Task: " + text(summary.task && summary.task.title));
       setText("repo", "Repo: " + text(summary.repo && summary.repo.name) + "  Branch: " + text(summary.repo && summary.repo.branch) + "  Run: " + text(summary.runId));
       setText("run-dir", "Run dir: " + text(summary.runDir));
-      rows("commands", commandRows(summary.commands), commandRow);
+      rows("actions", summary.actions, actionRow);
       rows("timeline", (summary.timeline.events || []).slice(-12), (event) => tr([event.timestamp || "", event.phase || "", event.status || "", event.message || event.type || ""]));
       kv("activity", [
         ["Phase", s.phase],
@@ -584,10 +595,11 @@ export function renderDashboardHtml({ apiBase = "/api", homeHref = null } = {}) 
 </html>`;
 }
 
-export async function startDashboardServer({ runDir, host = defaultHost, port = 0 } = {}) {
+export async function startDashboardServer({ runDir, host = defaultHost, port = 0, executable = "codex" } = {}) {
   const absoluteRunDir = resolveRunDir(runDir);
+  const activeActions = new Map();
   const server = createServer((request, response) => {
-    handleDashboardRequest({ request, response, runDir: absoluteRunDir });
+    handleDashboardRequest({ request, response, runDir: absoluteRunDir, activeActions, executable });
   });
   let resolveClosed;
   const closed = new Promise((resolvePromise) => {
@@ -655,9 +667,119 @@ export function openDashboardUrl({ url, platform = process.platform, runner = sp
   };
 }
 
-function handleDashboardRequest({ request, response, runDir }) {
+export async function startDashboardAction({
+  runDir,
+  action,
+  activeActions = new Map(),
+  executable = "codex",
+  now = new Date()
+} = {}) {
+  const absoluteRunDir = resolveRunDir(runDir);
+  const spec = dashboardActionSpecs[action];
+  if (!spec) {
+    throw new Error(`Unsupported dashboard action: ${action}`);
+  }
+  const key = dashboardActionKey({ runDir: absoluteRunDir, action });
+  const existing = activeActions.get(key);
+  if (existing?.status === "running") {
+    return existing;
+  }
+
+  const baseState = {
+    schemaVersion: 1,
+    kind: "meta-harness.dashboard-action",
+    id: spec.id,
+    label: spec.label,
+    runDir: absoluteRunDir,
+    status: "running",
+    startedAt: now.toISOString(),
+    finishedAt: null,
+    message: null,
+    artifactPath: null
+  };
+  activeActions.set(key, baseState);
+
+  const settle = (status, extra = {}) => {
+    const state = {
+      ...baseState,
+      status,
+      finishedAt: new Date().toISOString(),
+      ...extra
+    };
+    activeActions.set(key, state);
+    return state;
+  };
+
+  if (spec.background) {
+    executeDashboardAction({ runDir: absoluteRunDir, spec, executable })
+      .then((result) => settle("completed", result))
+      .catch((error) => settle("failed", { message: error.message || String(error) }));
+    return baseState;
+  }
+
+  try {
+    return settle("completed", await executeDashboardAction({ runDir: absoluteRunDir, spec, executable }));
+  } catch (error) {
+    return settle("failed", { message: error.message || String(error) });
+  }
+}
+
+function summarizeDashboardActions({ runDir, activeActions }) {
+  return Object.values(dashboardActionSpecs).map((spec) => {
+    const active = activeActions?.get(dashboardActionKey({ runDir, action: spec.id }));
+    return active || {
+      schemaVersion: 1,
+      kind: "meta-harness.dashboard-action",
+      id: spec.id,
+      label: spec.label,
+      runDir,
+      status: "idle",
+      startedAt: null,
+      finishedAt: null,
+      message: null,
+      artifactPath: null
+    };
+  });
+}
+
+async function executeDashboardAction({ runDir, spec, executable }) {
+  if (spec.id === "resume") {
+    const result = await runMetaCommand({ runDir, executable });
+    return { message: `runner ${result.status}` };
+  }
+  if (spec.id === "verify") {
+    const result = await runVerifyPipeline({ runDir });
+    return { message: `verification ${result.status}` };
+  }
+  if (spec.id === "reportText" || spec.id === "reportHtml") {
+    const written = writeRunReport({ runDir, format: spec.format });
+    return {
+      message: `${spec.format} report written`,
+      artifactPath: relativeArtifactPath(runDir, written.outputPath)
+    };
+  }
+  throw new Error(`Unsupported dashboard action: ${spec.id}`);
+}
+
+function dashboardActionKey({ runDir, action }) {
+  return `${resolveRunDir(runDir)}::${action}`;
+}
+
+function handleDashboardRequest({ request, response, runDir, activeActions, executable }) {
   const url = new URL(request.url || "/", "http://127.0.0.1");
   try {
+    if (request.method === "POST" && url.pathname === "/api/action") {
+      readJsonBody(request)
+        .then((body) => startDashboardAction({
+          runDir,
+          action: body.action,
+          activeActions,
+          executable
+        }))
+        .then((actionState) => sendJson(response, actionState.status === "running" ? 202 : 200, actionState))
+        .catch((error) => sendJson(response, 400, { error: error.message || String(error) }));
+      return;
+    }
     if (request.method !== "GET") {
       sendJson(response, 405, { error: "Method not allowed." });
       return;
@@ -672,7 +794,7 @@ function handleDashboardRequest({ request, response, runDir }) {
       return;
     }
     if (url.pathname === "/api/summary") {
-      sendJson(response, 200, buildDashboardSummary({ runDir }));
+      sendJson(response, 200, buildDashboardSummary({ runDir, activeActions }));
       return;
     }
     if (url.pathname === "/api/events") {
@@ -1136,6 +1258,23 @@ function contentTypeFor(path) {
 
 function sendJson(response, statusCode, value) {
   sendText(response, statusCode, `${JSON.stringify(value, null, 2)}\n`, "application/json; charset=utf-8");
+}
+
+async function readJsonBody(request) {
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of request) {
+    size += chunk.length;
+    if (size > 128 * 1024) {
+      throw new Error("Request body is too large.");
+    }
+    chunks.push(chunk);
+  }
+  const text = Buffer.concat(chunks).toString("utf8");
+  if (!text.trim()) {
+    return {};
+  }
+  return JSON.parse(text);
 }
 
 function sendText(response, statusCode, text, contentType) {

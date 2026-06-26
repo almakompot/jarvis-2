@@ -33,6 +33,8 @@ test("dashboard summary renders an initialized pending run with missing-file tol
   assert.match(summary.commands.verify, /jarvis-harness verify --run/);
   assert.match(summary.commands.reportText, /jarvis-harness report --run .* --format text/);
   assert.match(summary.commands.reportHtml, /jarvis-harness report --run .* --format html/);
+  assert.deepEqual(summary.actions.map((action) => action.id), ["resume", "verify", "reportText", "reportHtml"]);
+  assert.deepEqual(summary.actions.map((action) => action.status), ["idle", "idle", "idle", "idle"]);
 });
 
 test("dashboard summary maps internal policy decisions to operator lifecycle states", (t) => {
@@ -136,10 +138,8 @@ test("dashboard server serves HTML, JSON endpoints, artifact files, and traversa
   assert.match(html, /width: 100%/);
   assert.match(html, /white-space: pre;/);
   assert.match(html, /overflow: auto;/);
-  assert.match(html, /command-copy/);
-  assert.match(html, /commandRows/);
-  assert.match(html, /copyText/);
-  assert.match(html, /report html/);
+  assert.match(html, /action-button/);
+  assert.match(html, /apiBase \+ "\/action"/);
   assert.doesNotMatch(html, /2400px/);
   assert.doesNotMatch(html, /@media/);
 
@@ -147,6 +147,8 @@ test("dashboard server serves HTML, JSON endpoints, artifact files, and traversa
   assert.equal(summary.runId, "dashboard-server");
   assert.equal(summary.status.runner, "implemented");
   assert.ok(summary.changedFiles.files.some((file) => file.path === "src/site-gate.js"));
+  assert.ok(summary.actions.some((action) => action.label === "Run verification"));
+  assert.ok(summary.actions.some((action) => action.label === "HTML report"));
 
   const output = await (await fetch(new URL("/api/output", server.url))).json();
   assert.match(output.stdout.text, /assistant_message|inspection|command/);
@@ -162,6 +164,33 @@ test("dashboard server serves HTML, JSON endpoints, artifact files, and traversa
   const traversal = await fetch(new URL("/api/artifact?path=..%2Fpackage.json", server.url));
   assert.equal(traversal.status, 400);
   assert.match(await traversal.text(), /escapes the run directory/);
+
+  const verify = await fetch(new URL("/api/action", server.url), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ action: "verify" })
+  });
+  assert.equal(verify.status, 202);
+  const verifyPayload = await verify.json();
+  assert.equal(verifyPayload.status, "running");
+
+  const verified = await pollDashboardAction(server.url, "verify");
+  assert.equal(verified.status, "completed");
+  assert.match(verified.message, /verification/);
+
+  const report = await fetch(new URL("/api/action", server.url), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ action: "reportHtml" })
+  });
+  assert.equal(report.status, 200);
+  const reportPayload = await report.json();
+  assert.equal(reportPayload.status, "completed");
+  assert.equal(reportPayload.artifactPath, "html-report/index.html");
+
+  const reportArtifact = await fetch(new URL("/api/artifact?path=html-report%2Findex.html", server.url));
+  assert.equal(reportArtifact.status, 200);
+  assert.match(await reportArtifact.text(), /Findings/);
 });
 
 test("dashboard opener launches the platform default browser command", () => {
@@ -224,12 +253,10 @@ test("dashboard HTML is desktop-only and file-backed", () => {
   assert.match(html, /white-space: pre;/);
   assert.match(html, /overflow: auto;/);
   assert.match(html, /displayText/);
-  assert.match(html, /command-copy/);
-  assert.match(html, /Copy " \+ label \+ " command/);
-  assert.match(html, /\["resume", commands && commands\.resume\]/);
-  assert.match(html, /\["verify", commands && commands\.verify\]/);
-  assert.match(html, /\["report text", commands && commands\.reportText\]/);
-  assert.match(html, /\["report html", commands && commands\.reportHtml\]/);
+  assert.match(html, /action-button/);
+  assert.match(html, /postAction\(action\.id, button\)/);
+  assert.match(html, /apiBase \+ "\/action"/);
+  assert.match(html, /<tbody id="actions"><\/tbody>/);
   assert.doesNotMatch(html, /text-overflow: ellipsis/);
   assert.doesNotMatch(html, /grid-template-columns: calc\(var\(--dashboard-width\)/);
   assert.doesNotMatch(html, /2400px/);
@@ -254,6 +281,19 @@ function createRun(runId) {
     runId
   }).runDir;
   return { repo, runDir };
+}
+
+async function pollDashboardAction(baseUrl, actionId) {
+  let last = null;
+  for (let index = 0; index < 30; index += 1) {
+    last = await (await fetch(new URL("/api/summary", baseUrl))).json();
+    const action = last.actions.find((item) => item.id === actionId);
+    if (action && action.status !== "running") {
+      return action;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  return last.actions.find((item) => item.id === actionId);
 }
 
 function readJson(path) {

@@ -11,7 +11,8 @@ import {
   readDashboardEvents,
   readDashboardOutput,
   renderDashboardHtml,
-  resolveDashboardArtifact
+  resolveDashboardArtifact,
+  startDashboardAction
 } from "./dashboard.mjs";
 import { runDoctor } from "./doctor.mjs";
 import { runMetaCommand } from "./report-ux.mjs";
@@ -41,6 +42,7 @@ export async function startWebAppServer({
   folderPicker = chooseLocalFolder
 } = {}) {
   const activeRuns = new Map();
+  const activeActions = new Map();
   const roots = normalizeScanRoots(scanRoots || defaultScanRoots({ cwd }));
   const server = createServer((request, response) => {
     handleWebRequest({
@@ -48,6 +50,7 @@ export async function startWebAppServer({
       response,
       scanRoots: roots,
       activeRuns,
+      activeActions,
       executable,
       env,
       folderPicker
@@ -499,7 +502,7 @@ export function buildFolderPickerCommand({ platform = process.platform, prompt =
   return null;
 }
 
-async function handleWebRequest({ request, response, scanRoots, activeRuns, executable, env, folderPicker }) {
+async function handleWebRequest({ request, response, scanRoots, activeRuns, activeActions, executable, env, folderPicker }) {
   const url = new URL(request.url || "/", "http://127.0.0.1");
   try {
     if (request.method === "GET" && url.pathname === "/") {
@@ -546,12 +549,26 @@ async function handleWebRequest({ request, response, scanRoots, activeRuns, exec
       return;
     }
 
+    const actionMatch = url.pathname.match(/^\/api\/run\/([^/]+)\/action$/);
+    if (request.method === "POST" && actionMatch) {
+      const runDir = decodeRunToken(actionMatch[1]);
+      const body = await readJsonBody(request);
+      const actionState = await startDashboardAction({
+        runDir,
+        action: body.action,
+        activeActions,
+        executable
+      });
+      sendJson(response, actionState.status === "running" ? 202 : 200, actionState);
+      return;
+    }
+
     const apiMatch = url.pathname.match(/^\/api\/run\/([^/]+)\/(summary|events|output|artifact)$/);
     if (request.method === "GET" && apiMatch) {
       const runDir = decodeRunToken(apiMatch[1]);
       const endpoint = apiMatch[2];
       if (endpoint === "summary") {
-        sendJson(response, 200, buildDashboardSummary({ runDir }));
+        sendJson(response, 200, buildDashboardSummary({ runDir, activeActions }));
       } else if (endpoint === "events") {
         sendJson(response, 200, readDashboardEvents({ runDir }));
       } else if (endpoint === "output") {

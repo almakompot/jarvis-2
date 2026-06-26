@@ -1,10 +1,10 @@
 # Meta-Harness Dashboard Spec
 
-This is the controlling specification for the local run dashboard. Dashboard v1 is implemented as a read-only file projection. The goal is to make a running harness visible without adding a database, queue, worker service, or hidden state.
+This is the controlling specification for the local run dashboard. Dashboard v1 is implemented as a file-backed local projection with explicit harness action buttons. The goal is to make a running harness visible and operable without adding a database, queue, worker service, or hidden state.
 
 ## Purpose
 
-The dashboard is a read-only, file-backed operations surface for one `.task-runs/<id>/` folder. It answers the operator's live questions:
+The dashboard is a file-backed operations surface for one `.task-runs/<id>/` folder. It answers the operator's live questions:
 
 - what is the runner doing now?
 - which requirement or proof item is still pending?
@@ -27,7 +27,7 @@ Expected behavior:
 - opens the exact URL in the default browser
 - serves only the selected run folder
 - reads files from disk on each poll or through a lightweight file watcher
-- never writes run state
+- exposes explicit local actions for resume, verify, and report generation
 - exits cleanly on `Ctrl-C`
 
 Supported flags:
@@ -45,7 +45,8 @@ Allowed:
 
 - a small local HTTP server
 - static HTML/CSS/JS
-- read-only JSON endpoints
+- bounded JSON endpoints
+- explicit POST action endpoint for resume, verify, and report generation
 - 1-2 second polling
 - optional filesystem watch for faster refresh
 - links to existing artifacts under the run folder
@@ -58,7 +59,8 @@ Not allowed for v1:
 - remote service
 - authentication system
 - persistent state outside `.task-runs/<id>/`
-- write actions from the dashboard
+- arbitrary shell commands from the dashboard
+- deploy, push, send, publish, migration, or production mutation actions
 - mobile-specific layout
 
 The browser is a projection of:
@@ -166,11 +168,11 @@ The runner must also distinguish overclaim from explicit non-completion. The pro
 | Task: Build the one-week Statement Tracker app MVP                                                                                                             |
 | Run dir: /Users/levente/Documents/Jarvis/Projects/statement-tracker/.task-runs/20260625T095410Z-build-the-one-week-statement-tracker-app-mvp-the              |
 +----------------------------------------------------------------------------------------------------------------------------------------------------------------+
-| COMMAND      TEXT                                                                                                                     COPY      |
-| resume       jarvis-harness run --run <run-dir>                                                                                       copy      |
-| verify       jarvis-harness verify --run <run-dir>                                                                                    copy      |
-| report text  jarvis-harness report --run <run-dir> --format text                                                                      copy      |
-| report html  jarvis-harness report --run <run-dir> --format html                                                                      copy      |
+| ACTION      BUTTON                  STATUS                                    ARTIFACT                                                |
+| resume      [ Resume run ]           idle                                      none                                                    |
+| verify      [ Run verification ]     idle                                      none                                                    |
+| reportText  [ Text report ]          idle/completed/failed                     report.txt                                              |
+| reportHtml  [ HTML report ]          idle/completed/failed                     html-report/index.html                                  |
 +----------------------------------------------+--------------------------------------------------------------+------------------------------------------------------------+
 | RUN TIMELINE                                  | CURRENT ACTIVITY                                             | LIVE OUTPUT                                                |
 |                                              |                                                              |                                                            |
@@ -220,11 +222,13 @@ Header:
 - wall-clock limit: `none` unless `runner-config.json.timeouts.totalMs` is set
 - repo name, branch if available, run id, task title, run dir
 
-Command strip:
+Action strip:
 
 - render resume, verify, text report, and HTML report as their own rows
-- each row has a minimalist copy button for the exact command text
-- copy buttons only write to the clipboard; they must not start runs, verify, report, write artifacts, or mutate the run folder
+- each row has a minimalist button that starts that exact local harness action
+- buttons call typed internal harness APIs, not copied shell strings
+- long-running resume and verify actions run in the background and expose status through the summary payload
+- report buttons generate the corresponding report artifact and link it when complete
 
 Run timeline:
 
@@ -298,9 +302,12 @@ GET /api/summary              merged run summary
 GET /api/events               latest events, bounded
 GET /api/output               latest stdout/stderr tails, bounded
 GET /api/artifact?path=...    safe artifact reader inside the run dir
+POST /api/action              start resume, verify, reportText, or reportHtml
 ```
 
 All paths must be normalized under the selected run dir. Reject traversal, absolute paths outside the run dir, and secret-looking paths. The dashboard is local, but it must still avoid becoming a file browser for the whole machine.
+
+`POST /api/action` accepts only known action IDs. It must dispatch through internal harness functions rather than shelling through display text. `resume` maps to the same runner path as `jarvis-harness run --run <run-dir>`, `verify` maps to the same verification pipeline as `jarvis-harness verify --run <run-dir>`, and report actions use the same report writer as `jarvis-harness report`.
 
 ## Acceptance
 
@@ -309,9 +316,12 @@ Implementation is acceptable only when:
 - `jarvis-harness dashboard --run <run-dir>` starts a local URL
 - dashboard opens in the default browser by default and `--no-open` suppresses it
 - dashboard renders an initialized run with missing live artifacts
+- dashboard renders resume, verify, text report, and HTML report as real action buttons
+- action endpoint starts verify from a fixture run and records status in the summary
+- report actions write and link the generated report artifact
 - dashboard renders an active or fake running run from incrementally written files
 - dashboard renders accepted, rejected, blocked, and pending states from fixtures
-- dashboard does not write to the run folder
+- dashboard only mutates run folders through explicit harness actions
 - artifact endpoint rejects path traversal
 - page is fixed desktop width with no mobile layout
 - large output tails are bounded

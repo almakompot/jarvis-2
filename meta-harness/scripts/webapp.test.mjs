@@ -173,6 +173,16 @@ test("web app can initialize without starting the runner", async (t) => {
   const summary = await (await fetch(new URL(`/api/run/${payload.token}/summary`, server.url))).json();
   assert.equal(summary.status.runner, "pending");
   assert.equal(summary.commands.resume, `jarvis-harness run --run ${payload.runDir}`);
+
+  const report = await fetch(new URL(`/api/run/${payload.token}/action`, server.url), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ action: "reportText" })
+  });
+  assert.equal(report.status, 200);
+  const reportPayload = await report.json();
+  assert.equal(reportPayload.status, "completed");
+  assert.equal(reportPayload.artifactPath, "report.txt");
 });
 
 test("web app HTML is minimal desktop-only local harness UI", () => {

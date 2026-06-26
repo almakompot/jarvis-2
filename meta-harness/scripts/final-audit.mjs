@@ -166,7 +166,8 @@ const docRequirements = [
     fragments: [
       "jarvis-harness dashboard --run",
       "--no-open",
-      "read-only",
+      "explicit local actions",
+      "POST /api/action",
       "file-backed",
       "No mobile layout",
       "--dashboard-width: max(100vw, var(--dashboard-min-width))",
